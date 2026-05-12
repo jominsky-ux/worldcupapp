@@ -1,0 +1,347 @@
+/**
+ * src/pages/BracketPage.jsx — Knockout Bracket Picker
+ * =====================================================
+ * Renders a horizontal bracket tree for all 5 knockout rounds.
+ * Users click a team in any matchup to pick the winner; later-round
+ * matchup slots are populated as earlier picks are made.
+ *
+ * BRACKET STRUCTURE (2026 World Cup):
+ *   Round of 32  — 16 matches → 16 advance
+ *   Round of 16  — 8 matches  → 8 advance
+ *   Quarterfinals — 4 matches → 4 advance
+ *   Semifinals   — 2 matches  → 2 advance
+ *   Final        — 1 match    → Champion
+ *
+ * CASCADING PICKS:
+ * Changing a pick clears any downstream picks that depended on the
+ * previously chosen team, since that team can no longer reach later rounds.
+ *
+ * SCORING:
+ *   R32: +1 · R16: +2 · QF: +4 · SF: +8 · Final: +16 · Champion: +32
+ */
+
+import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
+import { useEntry } from '../context/EntryContext'
+import { PhaseGate } from '../components/shared/SharedComponents'
+import { MOCK_R32_MATCHUPS, ROUND_ORDER, ROUND_LABELS, BRACKET_TEAM_LOOKUP, MOCK_KNOCKOUT_RESULTS } from '../mocks/bracket'
+
+// ── Layout constants ───────────────────────────────────────────────────────
+// Each R32 matchup card occupies CARD_H px. SLOT is the repeating unit
+// (card + gap) used to compute per-round vertical offsets.
+const CARD_H = 72
+const SLOT = 80   // CARD_H + 8px gap
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function buildPicksMap(bracketPicks) {
+  const map = {}
+  for (const p of bracketPicks ?? []) {
+    const team = BRACKET_TEAM_LOOKUP.get(String(p.winnerTeamId))
+    if (team) map[p.matchupId] = team
+  }
+  return map
+}
+
+// Mutates `picks` (a copy) — clears any downstream pick that depended on
+// `clearedTeam`, then recurses to clear further downstream picks.
+function cascadeClear(picks, matchupId, clearedTeam) {
+  const dash = matchupId.lastIndexOf('-')
+  const round = matchupId.slice(0, dash)
+  const index = parseInt(matchupId.slice(dash + 1), 10)
+  const roundIdx = ROUND_ORDER.indexOf(round)
+  if (roundIdx >= ROUND_ORDER.length - 1) return
+
+  const parentId = `${ROUND_ORDER[roundIdx + 1]}-${Math.floor(index / 2)}`
+  if (picks[parentId]?.id === clearedTeam.id) {
+    const parentTeam = picks[parentId]
+    delete picks[parentId]
+    cascadeClear(picks, parentId, parentTeam)
+  }
+}
+
+// ── Page component ─────────────────────────────────────────────────────────
+
+export default function BracketPage() {
+  const { entries, activeEntry, activeEntryId, setActiveEntryId, saveBracketPick, phase } = useEntry()
+  const isReadOnly = phase === 'KNOCKOUT'
+  const results = isReadOnly ? MOCK_KNOCKOUT_RESULTS : {}
+  const [picks, setPicks] = useState(() => buildPicksMap(activeEntry?.bracketPicks))
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    setPicks(buildPicksMap(activeEntry?.bracketPicks))
+    setError(null)
+  }, [activeEntry?.id])
+
+  // Derive matchup objects for every round from R32 + current picks.
+  // R32 teams are fixed; later-round teams are the picked winners.
+  const derivedMatchups = useMemo(() => {
+    const byRound = { R32: MOCK_R32_MATCHUPS }
+    for (let i = 1; i < ROUND_ORDER.length; i++) {
+      const round = ROUND_ORDER[i]
+      const prev = byRound[ROUND_ORDER[i - 1]]
+      byRound[round] = Array.from({ length: prev.length / 2 }, (_, j) => ({
+        id: `${round}-${j}`,
+        home: picks[prev[2 * j].id] ?? null,
+        away: picks[prev[2 * j + 1].id] ?? null,
+      }))
+    }
+    return byRound
+  }, [picks])
+
+  const handlePick = useCallback(async (matchupId, team) => {
+    const prevPick = picks[matchupId]
+    const next = { ...picks, [matchupId]: team }
+    if (prevPick && prevPick.id !== team.id) {
+      cascadeClear(next, matchupId, prevPick)
+    }
+    setPicks(next)
+
+    if (!isReadOnly) {
+      setSaving(true)
+      setError(null)
+      try {
+        await saveBracketPick(matchupId, String(team.id))
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setSaving(false)
+      }
+    }
+  }, [picks, saveBracketPick, isReadOnly])
+
+  const handleSaveAll = async () => {
+    const pickEntries = Object.entries(picks)
+    if (pickEntries.length === 0) return
+    setSaving(true)
+    setSaved(false)
+    setError(null)
+    try {
+      await Promise.all(pickEntries.map(([matchupId, team]) => saveBracketPick(matchupId, String(team.id))))
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const totalPicks = Object.keys(picks).length
+
+  if (!activeEntry) return (
+    <div className="card text-center py-12 space-y-2">
+      <p className="font-body font-semibold text-brand text-lg">No entry selected</p>
+      <p className="font-body text-gray-500 text-sm">
+        Create an entry from the Dashboard to start making bracket picks.
+      </p>
+    </div>
+  )
+
+  return (
+    <PhaseGate
+      allowedPhases={['PRE_KNOCKOUT', 'KNOCKOUT']}
+      lockedMessage="Bracket picks open once the group stage concludes. Check back after the group stage ends!"
+    >
+      <div className="space-y-6">
+
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div className="space-y-2">
+            <h1 className="font-body font-semibold text-3xl text-brand">
+              Knockout Bracket
+            </h1>
+            <p className="text-gray-500 font-body">
+              Pick the winner of each round · {totalPicks} / 31 picks made
+            </p>
+            <EntryIndicator
+              entries={entries}
+              activeEntry={activeEntry}
+              activeEntryId={activeEntryId}
+              onSwitch={setActiveEntryId}
+            />
+          </div>
+          {isReadOnly ? (
+            <span className="badge bg-gray-100 text-gray-500 font-body text-xs shrink-0 self-start mt-1">
+              Bracket locked — read only
+            </span>
+          ) : (
+            <button
+              onClick={handleSaveAll}
+              disabled={saving || totalPicks === 0}
+              className="btn-primary shrink-0"
+            >
+              {saving ? 'Saving…' : saved ? '✓ Saved!' : `Save Bracket (${totalPicks}/31)`}
+            </button>
+          )}
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <p className="text-sm text-red-700 font-body">{error}</p>
+          </div>
+        )}
+
+        {/* ── Scoring reference ── */}
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+          <p className="text-sm font-body text-amber-800 leading-relaxed">
+            <strong>R32:</strong> +4 pts ·{' '}
+            <strong>R16:</strong> +8 pts ·{' '}
+            <strong>QF:</strong> +16 pts ·{' '}
+            <strong>SF:</strong> +32 pts ·{' '}
+            <strong>Final:</strong> +64 pts ·{' '}
+            <strong>Champion:</strong> +128 pts
+          </p>
+        </div>
+
+        {/* ── Bracket tree ── */}
+        <div className="overflow-x-auto -mx-4 px-4">
+          <div className="flex gap-3 min-w-max pb-6">
+            {ROUND_ORDER.map((round, roundIdx) => {
+              const matchups = derivedMatchups[round]
+              const slotsPerMatch = Math.pow(2, roundIdx)
+              const paddingTop = (slotsPerMatch * SLOT - CARD_H) / 2
+              const spacerH = slotsPerMatch * SLOT - CARD_H
+
+              return (
+                <div key={round} style={{ width: 164 }}>
+                  <p className="text-[11px] font-semibold text-center text-gray-400 font-body mb-2 uppercase tracking-wider whitespace-nowrap">
+                    {ROUND_LABELS[round]}
+                  </p>
+                  <div style={{ paddingTop }}>
+                    {matchups.map((matchup, i) => (
+                      <Fragment key={matchup.id}>
+                        <MatchupCard
+                          matchup={matchup}
+                          pick={picks[matchup.id]}
+                          onPick={handlePick}
+                          results={results}
+                          isReadOnly={isReadOnly}
+                        />
+                        {i < matchups.length - 1 && (
+                          <div style={{ height: spacerH }} />
+                        )}
+                      </Fragment>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+      </div>
+    </PhaseGate>
+  )
+}
+
+// ── MatchupCard ────────────────────────────────────────────────────────────
+function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
+  const slotH = CARD_H / 2
+  const actualWinnerId = results[matchup.id]
+
+  return (
+    <div
+      className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm"
+      style={{ height: CARD_H }}
+    >
+      <TeamSlot
+        team={matchup.home}
+        isSelected={pick?.id === matchup.home?.id}
+        actualWinnerId={actualWinnerId}
+        height={slotH}
+        borderBottom
+        isReadOnly={isReadOnly}
+        onSelect={() => matchup.home && onPick(matchup.id, matchup.home)}
+      />
+      <TeamSlot
+        team={matchup.away}
+        isSelected={pick?.id === matchup.away?.id}
+        actualWinnerId={actualWinnerId}
+        height={slotH}
+        isReadOnly={isReadOnly}
+        onSelect={() => matchup.away && onPick(matchup.id, matchup.away)}
+      />
+    </div>
+  )
+}
+
+// ── TeamSlot ───────────────────────────────────────────────────────────────
+function TeamSlot({ team, isSelected, actualWinnerId, height, borderBottom, isReadOnly, onSelect }) {
+  const base = `w-full flex items-center gap-2 px-2.5 text-left transition-colors${borderBottom ? ' border-b border-gray-100' : ''}`
+
+  if (!team) {
+    return (
+      <div className={`${base} text-gray-300 font-body text-xs italic`} style={{ height }}>
+        TBD
+      </div>
+    )
+  }
+
+  let colorClass
+  if (isSelected && actualWinnerId !== undefined) {
+    const won = String(team.id) === String(actualWinnerId)
+    colorClass = won ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'
+  } else if (isSelected) {
+    colorClass = 'bg-brand text-white'
+  } else {
+    colorClass = isReadOnly ? 'text-gray-700' : 'hover:bg-brand/5 text-gray-700'
+  }
+
+  return (
+    <button
+      onClick={isReadOnly ? undefined : onSelect}
+      style={{ height }}
+      className={[base, colorClass, isReadOnly ? 'cursor-default' : ''].join(' ')}
+    >
+      <img
+        src={team.flagUrl}
+        alt={team.code}
+        className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0"
+      />
+      <span className="font-body text-xs font-semibold truncate">{team.code}</span>
+    </button>
+  )
+}
+
+// ── EntryIndicator ─────────────────────────────────────────────────────────
+function EntryIndicator({ entries, activeEntry, activeEntryId, onSwitch }) {
+  if (!activeEntry) return null
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-2 bg-brand/5 border border-brand/15 rounded-xl px-3 py-1.5">
+        <span className="text-xs text-gray-400 font-body uppercase tracking-wide">
+          Entry {activeEntry.entryNumber}
+        </span>
+        <span className="text-gray-300 select-none">·</span>
+        <span className="font-body font-semibold text-brand text-sm">
+          {activeEntry.name}
+        </span>
+      </div>
+      {entries.length > 1 && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-400 font-body">Switch:</span>
+          {entries.map((e) => (
+            <button
+              key={e.id}
+              onClick={() => onSwitch(e.id)}
+              aria-label={`Switch to entry ${e.entryNumber}: ${e.name}`}
+              aria-pressed={e.id === activeEntryId}
+              title={e.name}
+              className={[
+                'w-7 h-7 rounded-lg text-xs font-body font-semibold transition-colors',
+                e.id === activeEntryId
+                  ? 'bg-brand text-white'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
+              ].join(' ')}
+            >
+              {e.entryNumber}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

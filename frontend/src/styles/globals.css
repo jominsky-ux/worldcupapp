@@ -1,0 +1,113 @@
+/*
+  src/styles/globals.css
+  ======================
+  This is the single global stylesheet loaded once at the top of the app.
+
+  It contains three sections:
+  1. Tailwind directives — these three @tailwind lines are replaced at build
+     time with Tailwind's base reset, all the utility classes you use, and
+     any component classes you define.
+  2. CSS custom properties (variables) — design tokens that Tailwind can't
+     cover, like gradient definitions and scrollbar styling.
+  3. Base element styles — minimal overrides for html/body to set up our
+     font and background defaults.
+*/
+
+/* ── 1. Tailwind layers ──────────────────────────────────────────────────── */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── 2. CSS custom properties ────────────────────────────────────────────── */
+:root {
+  /* Brand gradient used on hero sections and card accents */
+  --gradient-brand: linear-gradient(135deg, #0A1628 0%, #1E3460 100%);
+  --gradient-gold: linear-gradient(135deg, #C9A84C 0%, #E8C96A 100%);
+
+  /* Smooth scrolling across the whole app */
+  scroll-behavior: smooth;
+}
+
+/* ── 3. Base element styles ──────────────────────────────────────────────── */
+html {
+  font-family: 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  @apply bg-surface-secondary text-brand min-h-screen;
+  /* Prevents layout shift when a scrollbar appears/disappears */
+  overflow-y: scroll;
+}
+
+/* ── 4. Utility layer additions ──────────────────────────────────────────── */
+@layer utilities {
+  /* Typography shorthand for the Bebas Neue display font */
+  .font-display {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.04em;
+  }
+
+  /* Monospaced numbers — used for scores and points totals */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Gradient text — used for trophy / headline accents */
+  .text-gradient-gold {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Subtle scrollbar styling for panel overflows */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-brand-muted rounded-full;
+  }
+}
+
+/* ── 5. Component layer — reusable class combos ──────────────────────────── */
+@layer components {
+  /* Standard card surface */
+  .card {
+    @apply bg-surface rounded-2xl shadow-card p-6;
+  }
+
+  /* Primary action button */
+  .btn-primary {
+    @apply bg-gold text-brand-light font-body font-semibold
+           px-6 py-3 rounded-xl transition-all duration-200
+           hover:bg-gold-light hover:shadow-gold
+           active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /* Secondary / outline button */
+  .btn-secondary {
+    @apply border border-brand-muted text-brand font-body font-medium
+           px-6 py-3 rounded-xl transition-all duration-200
+           hover:bg-surface-secondary active:scale-95;
+  }
+
+  /* Form input field */
+  .input-field {
+    @apply w-full border border-gray-200 rounded-xl px-4 py-3
+           font-body text-brand bg-surface
+           focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent
+           placeholder:text-gray-400 transition-all duration-200;
+  }
+
+  /* Pill badge — used for positions (GK, DEF, etc.) */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full
+           text-xs font-body font-semibold uppercase tracking-wide;
+  }
+}

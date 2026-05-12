@@ -1,0 +1,71 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#0A1628', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#C9A84C', 'lineColor': '#888780', 'secondaryColor': '#1E3460', 'tertiaryColor': '#F4F6FA'}}}%%
+flowchart TD
+    ROOT["main.jsx\nQueryClientProvider · BrowserRouter\nAuthProvider · EntryProvider"]
+
+    ROOT --> APP["App.jsx\nRoute definitions"]
+
+    APP --> AUTH_PAGE["AuthPage\n/login · /register"]
+    APP --> LAYOUT["Layout.jsx\nProtectedRoute wrapper"]
+
+    AUTH_PAGE --> LOGIN["LoginForm"]
+    AUTH_PAGE --> REG["RegisterForm"]
+
+    LAYOUT --> NAV["Navbar"]
+    LAYOUT --> BANNER["CountdownBanner\nDeadline timer"]
+    LAYOUT --> OUTLET["React Router Outlet\n↓ current page renders here"]
+
+    OUTLET --> DASH["DashboardPage\n/dashboard"]
+    OUTLET --> GROUP["GroupStagePage\n/group-stage"]
+    OUTLET --> BRACKET["BracketPage\n/bracket"]
+    OUTLET --> SQUAD["SquadPage\n/squad"]
+    OUTLET --> LEADER["LeaderboardPage\n/leaderboard"]
+
+    DASH --> ENTRY_CARD["EntryCard\n× up to 3"]
+    DASH --> CREATE_ENTRY["CreateEntry\nname input form"]
+
+    GROUP --> GROUP_CARD["GroupCard\n× 12 groups\nFlag + 1st/2nd radios"]
+    GROUP --> THIRD_PANEL["ThirdPlacePanel\n8 picks · flag chips"]
+
+    BRACKET --> BRACKET_TREE["BracketTree\n⚠ planned"]
+    BRACKET_TREE --> MATCHUP["MatchupSlot\n× 31 matchups"]
+
+    SQUAD --> SQUAD_BUILDER["Player grid\nPosition filter · Search\n4-per-team limit"]
+    SQUAD_BUILDER --> PLAYER_CARD["PlayerCard\nselected · disabled states"]
+
+    LEADER --> SCORE_TABLE["ScoreTable"]
+    SCORE_TABLE --> RANK_ROW["RankRow\n× N users"]
+
+    subgraph SHARED["Shared components  —  used across pages"]
+        direction LR
+        PR["ProtectedRoute\nAuth guard"]
+        PG["PhaseGate\nLock by tournament phase"]
+        TB["TeamBadge\nFlag emoji + name"]
+        PC["PlayerCard"]
+        LS["LoadingSpinner\nsm · md · lg"]
+    end
+
+    subgraph CONTEXT["Context providers  —  global state"]
+        direction LR
+        AUTH_CTX["AuthContext\nuser · token · login · logout"]
+        ENTRY_CTX["EntryContext\nentries · activeEntry · phase\nsaveGroupPick · saveThirdPlacePicks\nsaveSquadPick · saveBracketPick"]
+    end
+
+    subgraph HOOKS["React Query hooks  —  data fetching"]
+        direction LR
+        H1["useGroups()"]
+        H2["usePlayers(filters)"]
+        H3["useLeaderboard()"]
+        H4["useTournamentInfo()"]
+        H5["useSaveGroupPicks()"]
+    end
+
+    subgraph MOCKS["src/mocks/  —  swap for real API calls"]
+        direction LR
+        M1["teams.js\n48 teams · 12 groups"]
+        M2["players.js\n~40 players · FPL stats"]
+        M3["entries.js\nphase · scoring constants\nMAX_THIRD_PLACE_PICKS=8\nMAX_PLAYERS_PER_TEAM=4"]
+    end
+
+    HOOKS -->|"queryFn (mock)"| MOCKS
+    CONTEXT -.->|"useAuth()\nuseEntry()"| OUTLET
+    SHARED -.->|"imported by pages"| OUTLET

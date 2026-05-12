@@ -1,0 +1,81 @@
+package com.jominsky.worldcupapp.provider;
+
+import com.jominsky.worldcupapp.dto.AthleteDto;
+import com.jominsky.worldcupapp.dto.GroupDto;
+import com.jominsky.worldcupapp.dto.MatchSummaryDto;
+import com.jominsky.worldcupapp.dto.ScoreboardDto;
+import com.jominsky.worldcupapp.dto.StandingsGroupDto;
+import com.jominsky.worldcupapp.dto.TournamentStatusDto;
+
+import java.util.List;
+
+/**
+ * Abstraction layer for retrieving World Cup data from an external source.
+ *
+ * Controllers and services depend only on this interface; the underlying data
+ * source (ESPN, a different sports API, or a test stub) is determined by which
+ * Spring bean is marked {@code @Primary} or selected via a Spring profile.
+ *
+ * Current implementations:
+ * <ul>
+ * <li>{@code EspnWorldCupDataProvider} – default, uses ESPN's unofficial public
+ * API</li>
+ * </ul>
+ *
+ * To add a new provider, implement this interface and annotate the class with
+ * {@code @Service} and {@code @Primary} (removing {@code @Primary} from
+ * {@code EspnWorldCupDataProvider}), or use {@code @Profile} to select at
+ * startup.
+ */
+public interface WorldCupDataProvider {
+
+    /**
+     * Returns all World Cup groups, each containing their member teams.
+     * The 2026 tournament has 12 groups of 4 teams each (48 teams total).
+     *
+     * @return list of groups in draw order; empty list on provider failure
+     */
+    List<GroupDto> getGroups();
+
+    /**
+     * Returns all athletes for every team
+     *
+     * @return one StandingsGroupDto per group; empty list on provider failure
+     */
+    List<AthleteDto> getAllTeamAthletes();
+
+    /**
+     * Returns the current standings table for every group, with teams
+     * sorted by their current position (most points first).
+     *
+     * @return one StandingsGroupDto per group; empty list on provider failure
+     */
+    List<StandingsGroupDto> getStandings();
+
+    /**
+     * Returns the scoreboard showing recent, live, and upcoming matches.
+     * The time window depends on the underlying provider (ESPN defaults to
+     * the current calendar week).
+     *
+     * @return scoreboard DTO containing a list of matches; never null
+     */
+    ScoreboardDto getScoreboard();
+
+    /**
+     * Returns detailed goal and assist information for a specific match.
+     *
+     * @param eventId the provider-specific match identifier (for ESPN: the numeric
+     *                event ID
+     *                found in the scoreboard response)
+     * @return match summary with scoring events, or {@code null} if not found
+     */
+    MatchSummaryDto getMatchSummary(String eventId);
+
+    /**
+     * Returns a snapshot of the current tournament phase and live-match status,
+     * used by the frontend to gate pick submissions and show live indicators.
+     *
+     * @return tournament status; never null (returns "unknown" phase on failure)
+     */
+    TournamentStatusDto getTournamentStatus();
+}
