@@ -74,7 +74,7 @@ jobs:
       - name: Build & deploy to S3
         working-directory: frontend
         env:
-          VITE_API_URL: ${{ secrets.API_URL }}
+          VITE_API_BASE_URL: ${{ secrets.API_URL }}
         run: |
           npm ci && npm run build
           aws s3 sync dist/ s3://${{ secrets.S3_BUCKET }} --delete
