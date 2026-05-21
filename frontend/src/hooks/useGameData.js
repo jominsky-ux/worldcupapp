@@ -20,14 +20,13 @@ import { MOCK_LEADERBOARD, DEADLINES } from '../mocks/entries'
 const delay = (ms = 400) => new Promise((r) => setTimeout(r, ms))
 
 // ─── Phase mapping ─────────────────────────────────────────────────────────
-// The backend derives a phase string from ESPN's season type.
-// Map it to the internal phase constants the rest of the app uses.
-const ESPN_PHASE_MAP = {
-  group: 'GROUP_STAGE',
-  knockout: 'KNOCKOUT',
-}
-function mapPhase(espnPhase) {
-  return ESPN_PHASE_MAP[espnPhase] ?? 'PRE_TOURNAMENT'
+// groupPicksOpen → PRE_TOURNAMENT (group picks still available)
+// bracketPicksOpen → KNOCKOUT (group stage over, bracket open)
+// neither → GROUP_STAGE (group stage in progress, all picks locked)
+function mapPhase(groupPicksOpen, bracketPicksOpen) {
+  if (groupPicksOpen) return 'PRE_TOURNAMENT'
+  if (bracketPicksOpen) return 'KNOCKOUT'
+  return 'GROUP_STAGE'
 }
 
 // ─── Field normalisation ───────────────────────────────────────────────────
@@ -170,7 +169,7 @@ export function useTournamentInfo() {
     queryFn: async () => {
       const { data } = await apiClient.get('/api/tournament/status')
       return {
-        phase: mapPhase(data.phase),
+        phase: mapPhase(data.groupPicksOpen, data.bracketPicksOpen),
         hasLiveMatches: data.hasLiveMatches,
         nextMatchDate: data.nextMatchDate,
         deadlines: {
