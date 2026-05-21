@@ -5,8 +5,8 @@ on:
     branches: [main]
 
 env:
-  AWS_REGION: us-east-1
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  AWS_REGION: us-east-2
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-2.amazonaws.com
 
 jobs:
   deploy-backend:
@@ -39,7 +39,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           envs: ECR_REGISTRY
           script: |
-            aws ecr get-login-password --region us-east-1 \
+            aws ecr get-login-password --region us-east-2 \
               | docker login --username AWS --password-stdin $ECR_REGISTRY
             docker pull $ECR_REGISTRY/wcfantasy-backend:latest
             docker stop wcfantasy-backend || true
