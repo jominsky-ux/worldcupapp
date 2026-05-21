@@ -55,6 +55,7 @@ jobs:
               -e DB_USERNAME=${{ secrets.DB_USERNAME }} \
               -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
               -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -e APP_CORS_ALLOWED_ORIGINS=${{ secrets.FRONTEND_URL }} \
               $ECR_REGISTRY/wcfantasy-backend:latest
 
   deploy-frontend:
