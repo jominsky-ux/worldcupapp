@@ -26,7 +26,8 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import apiClient from '../api/client'
-import { MOCK_PHASE, SQUAD_RULES, FORMATIONS } from '../mocks/entries'
+import { SQUAD_RULES, FORMATIONS } from '../mocks/entries'
+import { useTournamentInfo } from '../hooks/useGameData'
 
 const EntryContext = createContext(null)
 
@@ -81,9 +82,10 @@ export function EntryProvider({ children }) {
   const [activeEntryId, setActiveEntryId] = useState(null)
   const [entriesLoading, setEntriesLoading] = useState(false)
 
-  // Tournament phase — will eventually come from useTournamentInfo() once
-  // the backend exposes phase state tied to the picks deadline.
-  const [phase] = useState(MOCK_PHASE)
+  const { data: tournamentInfo } = useTournamentInfo()
+  // VITE_DEV_PHASE in .env.local overrides the backend phase locally.
+  // In production this env var is never set so the live backend value is used.
+  const phase = import.meta.env.VITE_DEV_PHASE ?? tournamentInfo?.phase ?? 'PRE_TOURNAMENT'
 
   // ── Derived: the full active entry object ────────────────────────────────
   const activeEntry = entries.find((e) => e.id === activeEntryId) ?? null
