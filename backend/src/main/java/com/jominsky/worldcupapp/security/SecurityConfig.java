@@ -1,5 +1,6 @@
 package com.jominsky.worldcupapp.security;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -42,9 +43,13 @@ public class SecurityConfig {
                                 "/api/standings/**",
                                 "/api/matches/**",
                                 "/api/tournament/**",
-                                "/api/teams/**")
+                                "/api/teams/**",
+                                "/api/players/**")
                         .permitAll()
                         .anyRequest().authenticated())
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, e) ->
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

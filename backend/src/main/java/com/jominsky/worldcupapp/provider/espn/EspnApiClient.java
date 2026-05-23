@@ -44,6 +44,10 @@ public class EspnApiClient {
   @Value("${app.espn.seasons-url:https://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/seasons/2026}")
   private String seasonsUrl;
 
+  /** Core API base — used for per-match player statistics. */
+  @Value("${app.espn.core-base-url:https://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world}")
+  private String coreBaseUrl;
+
   private final RestClient restClient;
 
   /**
@@ -127,6 +131,28 @@ public class EspnApiClient {
   @Cacheable(CacheConfig.SEASON_CACHE)
   public JsonNode fetchSeason() {
     return get(seasonsUrl);
+  }
+
+  /** Fetches all tournament events from the Core API (up to 200). */
+  public JsonNode fetchCoreEvents() {
+    return get(coreBaseUrl + "/events?limit=200");
+  }
+
+  /** Fetches competition data for an event, including competitor IDs and date. */
+  public JsonNode fetchCoreCompetition(String eventId) {
+    return get(coreBaseUrl + "/events/" + eventId + "/competitions/" + eventId);
+  }
+
+  /** Fetches the match roster for one team, providing player IDs. */
+  public JsonNode fetchCoreCompetitorRoster(String eventId, String teamId) {
+    return get(coreBaseUrl + "/events/" + eventId + "/competitions/" + eventId
+            + "/competitors/" + teamId + "/roster");
+  }
+
+  /** Fetches per-player match statistics for a single athlete. */
+  public JsonNode fetchCorePlayerStats(String eventId, String teamId, String athleteId) {
+    return get(coreBaseUrl + "/events/" + eventId + "/competitions/" + eventId
+            + "/competitors/" + teamId + "/roster/" + athleteId + "/statistics/0");
   }
 
   /**

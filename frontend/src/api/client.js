@@ -33,4 +33,20 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+// Clear a stale or expired token and redirect to login on 401.
+// Auth endpoints are excluded — login/register failures return 401 by design
+// and should be handled by the form, not treated as session expiry.
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const url = error.config?.url ?? ''
+    if (error.response?.status === 401 && !url.includes('/api/auth/')) {
+      localStorage.removeItem('wcf_token')
+      localStorage.removeItem('wcf_user')
+      window.location.href = '/'
+    }
+    return Promise.reject(error)
+  }
+)
+
 export default apiClient

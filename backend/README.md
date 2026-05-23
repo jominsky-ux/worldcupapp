@@ -68,9 +68,11 @@ mvn spring-boot:run
 
 Flyway runs automatically on startup and applies any pending migrations from `src/main/resources/db/migration/`.
 
-### AWS Deployment
+### AWS Deployment (EC2 + Docker + CloudFront)
 
-Pass the variables above via ECS task definition environment / secrets fields. For `JWT_SECRET`, store the value in AWS Secrets Manager and inject it as an environment variable through the ECS secrets field — no code changes required.
+The backend runs as a Docker container on an EC2 t3.micro instance. Nginx on the same instance proxies port 80 → `127.0.0.1:8080`. A dedicated CloudFront distribution with an HTTP origin points at the EC2 public DNS name, providing free HTTPS at `*.cloudfront.net` without a custom domain or ACM certificate.
+
+Environment variables are passed as `-e` flags in the `docker run` command (see `.github/workflows/deploy.yaml`):
 
 | Environment variable | Description |
 |----------------------|-------------|
@@ -79,8 +81,9 @@ Pass the variables above via ECS task definition environment / secrets fields. F
 | `DB_NAME` | Database name |
 | `DB_USERNAME` | Database user |
 | `DB_PASSWORD` | Database password |
-| `JWT_SECRET` | Base64-encoded HMAC-SHA key (≥ 256 bits) |
+| `JWT_SECRET` | Base64-encoded HMAC-SHA key (≥ 256 bits) — generate with `openssl rand -base64 32` |
 | `JWT_EXPIRATION_MS` | Token lifetime in ms (default `86400000` = 24 h) |
+| `APP_CORS_ALLOWED_ORIGINS` | CloudFront frontend URL, e.g. `https://xxxx.cloudfront.net` |
 
 ---
 
@@ -92,6 +95,7 @@ Pass the variables above via ECS task definition environment / secrets fields. F
 | `app.cors.allowed-origins` | `http://localhost:3000` | Comma-separated allowed CORS origins |
 | `app.espn.base-url` | ESPN site API URL | Base URL for scoreboard and match-summary endpoints |
 | `app.espn.standings-url` | ESPN v2 standings URL | Separate URL for the standings endpoint |
+| `app.espn.core-base-url` | ESPN Core API URL | Base URL for per-player match statistics (Core v2 API) |
 | `app.jwt.secret` | Dev-only default | Base64-encoded HMAC-SHA signing key |
 | `app.jwt.expiration-ms` | `86400000` | JWT lifetime (milliseconds) |
 
@@ -112,7 +116,8 @@ All endpoints are prefixed with `/api`.
 | `GET` | `/api/matches` | Scoreboard (scheduled, live, completed) |
 | `GET` | `/api/matches/{eventId}/summary` | Goal and assist detail for a specific match |
 | `GET` | `/api/tournament/status` | Current phase, live-match flag, next match date |
-| `GET` | `/api/teams/athletes` | All athletes for every tournament team *(controller pending — available via provider today)* |
+| `GET` | `/api/teams/athletes` | All athletes for every tournament team |
+| `GET` | `/api/players/points` | Total fantasy points per athlete (aggregated from `player_match_stats`) |
 
 ### Protected – `Authorization: Bearer <token>` required
 
@@ -224,10 +229,15 @@ controller/
   StandingsController     GET /api/standings
   MatchController         GET /api/matches, /api/matches/{id}/summary
   TournamentController    GET /api/tournament/status
+  TeamsController         GET /api/teams/athletes
+  PlayerPointsController  GET /api/players/points (delegates to WorldCupDataProvider)
 service/
   UserService             registration, login, password hashing
   EntryService            entry CRUD, ownership verification, max-3 enforcement
   PickService             group/third-place/knockout pick upserts
+  PlayerPointsService     @Scheduled sync only — fetches completed-match stats from the
+                          ESPN Core API every 5 min, calculates FPL-style points, and
+                          persists rows to player_match_stats; no query logic here
 repository/               Spring Data JPA repositories for all entities
 model/
   User                    account – email, BCrypt hash, display name, role
@@ -235,9 +245,11 @@ model/
   GroupStagePick          predicted 1st and 2nd place per group per entry
   ThirdPlacePick          one row per advancing third-place team per entry
   KnockoutPick            predicted winner per knockout match per entry
+  PlayerMatchStats        per-player per-match stats and total fantasy points
   Role                    USER | ADMIN enum
 dto/                      immutable Java records for all request and response bodies
   AthleteDto              id, display name, position, teamId (read-only, from ESPN)
+  PlayerPointsDto         athleteId, totalPoints (aggregated across all matches)
 security/
   JwtUtil                 token generation and validation (JJWT 0.12, HS512)
   JwtAuthenticationFilter stateless JWT request filter
@@ -247,20 +259,33 @@ config/
   WebConfig               CORS (delegates to SecurityConfig CorsConfigurationSource)
   RestClientConfig        shared RestClient bean for ESPN HTTP calls
   CacheConfig             Caffeine cache manager with per-cache TTLs
+  SchedulingConfig        enables @Scheduled support (@EnableScheduling)
   DataInitializer         seeds test users when running with the local profile
   LocalSecurityConfig     permits /h2-console under the local profile
 provider/
-  WorldCupDataProvider    interface – swap ESPN for any other source
+  WorldCupDataProvider    interface – swap ESPN for any other source; all controllers
+                          depend only on this interface, never on a concrete class
+                          Methods: getGroups, getStandings, getScoreboard, getMatchSummary,
+                          getTournamentStatus, getAllTeamAthletes, getAllAthletePoints
   espn/EspnApiClient      raw ESPN HTTP calls, Caffeine-cached
                           fetchTeamAthletes(teamId) – hits /teams/{id}/roster, cached 24 h
-  espn/EspnWorldCupDataProvider  ESPN JSON → domain DTOs
+                          fetchCoreEvents() – ESPN Core API event list
+                          fetchCoreCompetition(eventId) – competition details (date, competitors)
+                          fetchCoreCompetitorRoster(eventId, teamId) – player roster for a match
+                          fetchCorePlayerStats(eventId, teamId, athleteId) – per-player match stats
+  espn/EspnWorldCupDataProvider  ESPN JSON → domain DTOs; @Primary implementation
                           getAllTeamAthletes() – iterates all groups/teams, returns List<AthleteDto>
+                          getAllAthletePoints() – reads aggregated totals from PlayerMatchStatsRepository
+                          (PlayerPointsService writes the rows; this provider only reads them)
 db/migration/
-  V1__create_users_table        users table
-  V2__create_picks_tables       original user-scoped pick tables
-  V3__create_entries_table      entries table (multi-entry support)
-  V4__migrate_picks_to_entries  backfill + re-key pick tables to entries
-  V5__add_group_id_to_third_place_picks  group_id column + one-per-group constraint
+  V1__create_users_table                  users table
+  V2__create_picks_tables                 original user-scoped pick tables
+  V3__create_entries_table                entries table (multi-entry support)
+  V4__migrate_picks_to_entries            backfill + re-key pick tables to entries
+  V5__add_group_id_to_third_place_picks   group_id column + one-per-group constraint
+  V6__add_squad_picks                     squad_picks table + formation column on entries
+  V7__alter_entry_number_to_integer       entry_number widened from SMALLINT to INTEGER
+  V8__add_player_match_stats              player_match_stats table for FPL-style scoring
 ```
 
 ### Caching
@@ -291,8 +316,9 @@ erDiagram
     entries {
         uuid        id              PK
         uuid        user_id         FK  "not null"
-        smallint    entry_number        "1–3, not null"
+        integer     entry_number        "1–3, not null"
         varchar50   name                "optional display name"
+        varchar10   formation           "e.g. 4-4-2, nullable"
         timestamptz created_at          "not null"
         timestamptz updated_at          "not null"
     }
@@ -324,10 +350,36 @@ erDiagram
         timestamptz updated_at           "not null"
     }
 
-    users             ||--o{ entries           : "has up to 3"
-    entries           ||--o{ group_stage_picks  : "one per group (A–L)"
-    entries           ||--o{ third_place_picks  : "exactly 8 per entry"
-    entries           ||--o{ knockout_picks     : "one per knockout match"
+    squad_picks {
+        uuid        id           PK
+        uuid        entry_id     FK  "not null"
+        varchar3    position         "GK | DEF | MID | FWD"
+        varchar50   athlete_id       "ESPN athlete ID, not null"
+        timestamptz created_at       "not null"
+        timestamptz updated_at       "not null"
+    }
+
+    player_match_stats {
+        uuid        id           PK
+        varchar50   athlete_id       "ESPN athlete ID, not null"
+        varchar50   event_id         "ESPN event ID, not null"
+        varchar3    position         "GK | DEF | MID | FWD"
+        int         minutes
+        int         goals
+        int         assists
+        boolean     clean_sheet
+        int         yellow_cards
+        int         red_cards
+        int         saves
+        int         total_points
+        timestamptz created_at       "not null"
+    }
+
+    users             ||--o{ entries              : "has up to 3"
+    entries           ||--o{ group_stage_picks     : "one per group (A–L)"
+    entries           ||--o{ third_place_picks     : "exactly 8 per entry"
+    entries           ||--o{ knockout_picks        : "one per knockout match"
+    entries           ||--o{ squad_picks           : "up to 11 players"
 ```
 
 **Key constraints**
@@ -339,6 +391,8 @@ erDiagram
 | `group_stage_picks` | `(entry_id, group_id)` |
 | `third_place_picks` | `(entry_id, team_id)` and `(entry_id, group_id)` |
 | `knockout_picks` | `(entry_id, match_event_id)` |
+| `squad_picks` | `(entry_id, athlete_id)` |
+| `player_match_stats` | `(athlete_id, event_id)` |
 
 ---
 
@@ -356,6 +410,7 @@ The React frontend (`frontend/`) connects to this backend via a shared axios ins
 | `useMatchSummary(id)` | `GET /api/matches/{id}/summary` |
 | `useTournamentInfo()` | `GET /api/tournament/status` |
 | `usePlayers()` | `GET /api/teams/athletes` |
+| `usePlayerPoints()` | `GET /api/players/points` |
 | `AuthContext.login()` | `POST /api/auth/login` |
 | `AuthContext.register()` | `POST /api/auth/register` |
 | `EntryContext` (load) | `GET /api/entries` + `GET /api/entries/{id}/picks` |
@@ -368,7 +423,7 @@ The React frontend (`frontend/`) connects to this backend via a shared axios ins
 
 - `useLeaderboard()` – fantasy points leaderboard
 - `EntryContext.saveFormation()` – formation selection
-- `EntryContext.saveSquadPick()` – 11-player squad
+- `EntryContext.saveSquadPick()` – 11-player squad (schema exists in `squad_picks`; API not yet wired)
 
 ---
 

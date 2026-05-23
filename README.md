@@ -12,19 +12,27 @@ worldcupapp/
 └── frontend/   React 18 / Vite single-page application
 ```
 
-The frontend communicates with the backend over a JSON REST API secured with JWT tokens. Live World Cup data (standings, scoreboard, rosters) is sourced from the ESPN API and cached server-side.
+The frontend communicates with the backend over a JSON REST API secured with JWT tokens. Live World Cup data (standings, scoreboard, rosters, per-player match statistics) is sourced from the ESPN public API and cached server-side.
 
 ```
-┌────────────────────┐        REST/JSON        ┌──────────────────────────┐
-│  React SPA (Vite)  │ ──────────────────────► │  Spring Boot API (:8080) │
-│     port 3000      │ ◄────────────────────── │   Spring Security + JWT  │
-└────────────────────┘                         └──────────┬───────────────┘
-                                                          │
-                                          ┌───────────────┼───────────────┐
-                                          ▼               ▼               ▼
-                                     PostgreSQL      ESPN API        Caffeine
-                                     (H2 local)    (live data)       Cache
+┌────────────────────────────┐        REST/JSON        ┌──────────────────────────┐
+│  React SPA (Vite)          │ ──────────────────────► │  Spring Boot API (:8080) │
+│  CloudFront → S3 (prod)    │ ◄────────────────────── │   Spring Security + JWT  │
+│  localhost:3000 (dev)      │                         └──────────┬───────────────┘
+└────────────────────────────┘                                    │
+                                                  ┌───────────────┼────────────────┐
+                                                  ▼               ▼                ▼
+                                             PostgreSQL      ESPN API          Caffeine
+                                             (H2 local)   (site + Core v2)     Cache
+                                                                  │
+                                                          ┌───────┴───────┐
+                                                          ▼               ▼
+                                                   Scoreboard /    Per-player match
+                                                   standings /     stats → FPL points
+                                                   rosters         (@Scheduled, 5 min)
 ```
+
+**Production infrastructure:** EC2 t3.micro running Docker + Nginx (HTTP → Spring Boot). A second CloudFront distribution sits in front of EC2 and provides free HTTPS via `*.cloudfront.net`. GitHub Actions builds the Docker image, pushes to ECR, and deploys via SSH.
 
 ---
 
@@ -37,11 +45,12 @@ The frontend communicates with the backend over a JSON REST API secured with JWT
 | Language | Java 17 |
 | Framework | Spring Boot 3.3 |
 | Build | Maven 3.8+ |
-| Database (prod) | PostgreSQL (Flyway migrations) |
+| Database (prod) | PostgreSQL on RDS (Flyway migrations) |
 | Database (local) | H2 in-memory |
 | Auth | JWT via JJWT 0.12.6 |
 | Caching | Caffeine (1 min – 24 h TTL per cache) |
-| External data | ESPN API |
+| External data | ESPN site API + ESPN Core v2 API |
+| Deployment | EC2 t3.micro + Docker + Nginx + CloudFront |
 
 ### Key API areas
 
@@ -51,6 +60,7 @@ The frontend communicates with the backend over a JSON REST API secured with JWT
 | Tournament data | `GET /api/groups`, `/api/standings`, `/api/matches`, `/api/tournament/status` |
 | Entries | `GET/POST /api/entries`, `GET /api/entries/{id}/picks` |
 | Picks | `PUT /api/entries/{id}/picks/groups`, `.../third-place`, `.../knockout` |
+| Players | `GET /api/teams/athletes`, `GET /api/players/points` |
 
 ### Quick start
 

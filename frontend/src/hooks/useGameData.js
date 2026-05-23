@@ -224,6 +224,31 @@ export function usePlayers(filters = {}) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// PLAYER POINTS — LIVE
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * usePlayerPoints — fetches total fantasy points for every athlete.
+ * Source: GET /api/players/points (aggregated from player_match_stats table)
+ * Returns a Map<athleteId, totalPoints> for O(1) lookup in the squad page.
+ */
+export function usePlayerPoints() {
+  return useQuery({
+    queryKey: ['playerPoints'],
+    queryFn: () =>
+      apiClient.get('/api/players/points').then((res) => {
+        const map = new Map()
+        for (const { athleteId, totalPoints } of res.data) {
+          map.set(athleteId, totalPoints)
+        }
+        return map
+      }),
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 5,
+  })
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // LEADERBOARD — MOCK (no backend endpoint yet)
 // ══════════════════════════════════════════════════════════════════════════
 

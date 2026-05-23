@@ -132,16 +132,17 @@ flowchart TD
         H3["useLeaderboard()"]
         H4["useTournamentInfo()"]
         H5["useSaveGroupPicks()"]
+        H6["usePlayerPoints()"]
     end
 
-    subgraph MOCKS["src/mocks/  —  swap for real API calls"]
+    subgraph MOCKS["src/mocks/  —  still used by mocked hooks"]
         direction LR
         M1["teams.js\n48 teams · 12 groups"]
         M2["players.js\n~40 players · FPL stats"]
-        M3["entries.js\nphase · scoring constants\nMAX_THIRD_PLACE_PICKS=8\nMAX_PLAYERS_PER_TEAM=4"]
+        M3["entries.js\nscoring constants\nMAX_THIRD_PLACE_PICKS=8\nMAX_PLAYERS_PER_TEAM=4\nMOCK_LEADERBOARD"]
     end
 
-    HOOKS -->|"queryFn (mock)"| MOCKS
+    HOOKS -->|"queryFn (mock — leaderboard only)"| MOCKS
     CONTEXT -.->|"useAuth()\nuseEntry()"| OUTLET
     SHARED -.->|"imported by pages"| OUTLET
 ```
@@ -192,29 +193,44 @@ The standalone `.mermaid` source lives at `src/component-tree.mermaid`.
 
 ## Mock data vs real API
 
-During development, all data comes from `src/mocks/`. The hooks in `src/hooks/useGameData.js` simulate network delays and return mock data.
+Most hooks in `src/hooks/useGameData.js` are now wired to the live Spring Boot backend. The following hooks call real endpoints:
 
-**To connect the real backend:**
-1. Open `src/hooks/useGameData.js`
-2. Find the `queryFn` for the hook you want to connect
-3. Replace the mock body with an axios call, e.g.:
-   ```js
-   queryFn: () => axios.get('/api/groups').then(r => r.data)
-   ```
-4. The component using the hook doesn't need to change at all
+| Hook | Endpoint |
+|------|----------|
+| `useGroups()` | `GET /api/groups` |
+| `useStandings()` | `GET /api/standings` |
+| `useScoreboard()` | `GET /api/matches` |
+| `useMatchSummary(id)` | `GET /api/matches/{id}/summary` |
+| `useTournamentInfo()` | `GET /api/tournament/status` |
+| `usePlayers(filters)` | `GET /api/teams/athletes` |
+| `usePlayerPoints()` | `GET /api/players/points` |
+
+The following hooks still return mock data until their backend endpoints are built:
+
+| Hook | Status |
+|------|--------|
+| `useLeaderboard()` | Returns `MOCK_LEADERBOARD` from `src/mocks/entries.js` |
+| `useSaveGroupPicks()` | Simulates a save; backend mutation not yet wired |
 
 ---
 
 ## Simulating different tournament phases
 
-In `src/mocks/entries.js`, change `MOCK_PHASE` to any of:
+In production, the tournament phase is determined from the live backend (`GET /api/tournament/status` → `groupPicksOpen` / `bracketPicksOpen` flags). For local development you can override this with an environment variable instead of waiting for the real tournament calendar.
+
+In `.env.local`, set:
+
+```
+VITE_DEV_PHASE=PRE_TOURNAMENT
+```
 
 | Value | Effect |
 |-------|--------|
 | `'PRE_TOURNAMENT'` | Group stage picks open, bracket/squad locked |
 | `'GROUP_STAGE'` | Tournament underway, all picks locked |
-| `'PRE_KNOCKOUT'` | Group stage done, bracket + squad picks now open |
-| `'KNOCKOUT'` | All picks locked, live scoring active |
+| `'KNOCKOUT'` | Bracket picks open, group picks locked |
+
+Remove or leave `VITE_DEV_PHASE` unset in production builds — the app will use the live phase from the backend.
 
 ---
 
@@ -248,7 +264,12 @@ Manages fetched data (server state). Handles loading, errors, caching, and backg
 Copy `.env.example` to `.env.local` and fill in values:
 
 ```
+# Required — Spring Boot backend URL (proxied by Vite in dev, set explicitly in prod)
 VITE_API_BASE_URL=http://localhost:8080
+
+# Optional — override the live tournament phase for local development
+# Valid values: PRE_TOURNAMENT | GROUP_STAGE | KNOCKOUT
+# VITE_DEV_PHASE=PRE_TOURNAMENT
 ```
 
-All Vite environment variables must start with `VITE_` to be accessible in the browser.
+All Vite environment variables must start with `VITE_` to be accessible in the browser. In production, `VITE_API_BASE_URL` is set to the backend CloudFront URL during the CI build step.

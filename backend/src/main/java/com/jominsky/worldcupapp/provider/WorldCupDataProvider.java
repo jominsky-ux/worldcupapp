@@ -3,6 +3,7 @@ package com.jominsky.worldcupapp.provider;
 import com.jominsky.worldcupapp.dto.AthleteDto;
 import com.jominsky.worldcupapp.dto.GroupDto;
 import com.jominsky.worldcupapp.dto.MatchSummaryDto;
+import com.jominsky.worldcupapp.dto.PlayerPointsDto;
 import com.jominsky.worldcupapp.dto.ScoreboardDto;
 import com.jominsky.worldcupapp.dto.StandingsGroupDto;
 import com.jominsky.worldcupapp.dto.TournamentStatusDto;
@@ -78,4 +79,12 @@ public interface WorldCupDataProvider {
      * @return tournament status; never null (returns "unknown" phase on failure)
      */
     TournamentStatusDto getTournamentStatus();
+
+    /**
+     * Returns aggregated fantasy points for every athlete who has appeared in
+     * at least one completed match.
+     *
+     * @return list of (athleteId, totalPoints) pairs; empty list if no data yet
+     */
+    List<PlayerPointsDto> getAllAthletePoints();
 }

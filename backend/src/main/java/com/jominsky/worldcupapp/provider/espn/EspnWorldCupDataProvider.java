@@ -17,6 +17,7 @@ import com.jominsky.worldcupapp.dto.AthleteDto;
 import com.jominsky.worldcupapp.dto.GroupDto;
 import com.jominsky.worldcupapp.dto.MatchDto;
 import com.jominsky.worldcupapp.dto.MatchSummaryDto;
+import com.jominsky.worldcupapp.dto.PlayerPointsDto;
 import com.jominsky.worldcupapp.dto.ScoreboardDto;
 import com.jominsky.worldcupapp.dto.ScoringEventDto;
 import com.jominsky.worldcupapp.dto.StandingsGroupDto;
@@ -24,6 +25,7 @@ import com.jominsky.worldcupapp.dto.TeamDto;
 import com.jominsky.worldcupapp.dto.TeamStandingDto;
 import com.jominsky.worldcupapp.dto.TournamentStatusDto;
 import com.jominsky.worldcupapp.provider.WorldCupDataProvider;
+import com.jominsky.worldcupapp.repository.PlayerMatchStatsRepository;
 
 /**
  * Default implementation of {@link WorldCupDataProvider} backed by ESPN's
@@ -49,16 +51,16 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
     private static final Logger log = LoggerFactory.getLogger(EspnWorldCupDataProvider.class);
 
     private final EspnApiClient espnApiClient;
+    private final PlayerMatchStatsRepository statsRepository;
 
     private static final String GROUP_STAGE_FIRST_GAME_TIME = "2026-06-11T20:00:00Z";
     private static final String GROUP_STAGE_END_TIME = "2026-06-28T02:30:00Z";
     private static final String ROUND_OF_32_FIRST_GAME_TIME = "2026-06-28T19:00:00Z";
 
-    /**
-     * @param espnApiClient low-level ESPN HTTP client (responses are cached there)
-     */
-    public EspnWorldCupDataProvider(EspnApiClient espnApiClient) {
+    public EspnWorldCupDataProvider(EspnApiClient espnApiClient,
+                                    PlayerMatchStatsRepository statsRepository) {
         this.espnApiClient = espnApiClient;
+        this.statsRepository = statsRepository;
     }
 
     /**
@@ -291,6 +293,16 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
         }
 
         return athletes;
+    }
+
+    @Override
+    public List<PlayerPointsDto> getAllAthletePoints() {
+        List<Object[]> rows = statsRepository.sumPointsByAthlete();
+        List<PlayerPointsDto> result = new ArrayList<>(rows.size());
+        for (Object[] row : rows) {
+            result.add(new PlayerPointsDto((String) row[0], ((Number) row[1]).intValue()));
+        }
+        return result;
     }
 
     /**

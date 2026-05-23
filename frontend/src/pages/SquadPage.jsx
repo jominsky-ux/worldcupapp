@@ -24,7 +24,7 @@
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { usePlayers } from '../hooks/useGameData'
+import { usePlayers, usePlayerPoints } from '../hooks/useGameData'
 import { useEntry } from '../context/EntryContext'
 import { PhaseGate, LoadingSpinner, PlayerCard } from '../components/shared/SharedComponents'
 import { SQUAD_RULES, FORMATIONS } from '../mocks/entries'
@@ -65,15 +65,25 @@ export default function SquadPage() {
     setError(null)
   }, [activeEntry?.id])
 
+  const { data: pointsMap = new Map() } = usePlayerPoints()
+
   // Full unfiltered list — used for position/team lookups on selected players.
   // Shares the ['athletes'] cache with the filtered call below; no extra request.
-  const { data: allPlayers = [] } = usePlayers()
+  const { data: rawAllPlayers = [] } = usePlayers()
+  const allPlayers = useMemo(
+    () => rawAllPlayers.map((p) => ({ ...p, totalPoints: pointsMap.get(p.id) ?? 0 })),
+    [rawAllPlayers, pointsMap]
+  )
 
-  const { data: players = [], isLoading } = usePlayers({
+  const { data: rawPlayers = [], isLoading } = usePlayers({
     position: activePosition === 'All' ? undefined : activePosition,
     teamId: selectedTeam || undefined,
     search: search || undefined,
   })
+  const players = useMemo(
+    () => rawPlayers.map((p) => ({ ...p, totalPoints: pointsMap.get(p.id) ?? 0 })),
+    [rawPlayers, pointsMap]
+  )
 
   // ── Team dropdown options ─────────────────────────────────────────────────
   const teamOptions = useMemo(() => {
