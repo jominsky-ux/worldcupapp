@@ -284,7 +284,7 @@ function ScoringReference() {
             Bracket (per correct pick)
           </h3>
           <ul className="space-y-1 text-sm font-body">
-            {[['R32', 4], ['R16', 8], ['QF', 16], ['SF', 32], ['Final', 64], ['Champion', 128]].map(
+            {[['R32', 4], ['R16', 8], ['QF', 16], ['SF', 32], ['Final', 64]].map(
               ([round, pts]) => (
                 <li key={round} className="flex justify-between">
                   <span>{round}</span>

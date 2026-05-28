@@ -18,7 +18,7 @@ No API keys are required for the default ESPN provider.
 
 ## Running Locally (no PostgreSQL required)
 
-The `local` Spring profile replaces PostgreSQL with an H2 in-memory database and seeds two test accounts on startup. No environment variables are needed.
+The `local` Spring profile replaces PostgreSQL with an H2 in-memory database and seeds test accounts on startup. No environment variables are needed.
 
 ```bash
 cd backend
@@ -27,13 +27,29 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 **IntelliJ:** Run config → Active profiles → `local`
 
-The server starts on port **8080**. On startup the console prints:
+The server starts on port **8080**.
 
-```
-Test credentials: player1@test.com / password  |  player2@test.com / password
-```
+#### Seed data modes
 
-`player1` has a full set of sample picks seeded. `player2` starts empty (useful for testing the blank state in the UI).
+Two seeders run on startup (in order):
+
+1. **`DataInitializer`** — always creates `player1@test.com` and `player2@test.com` with password `password`. `player1` has a full set of sample picks; `player2` has no entries (useful for testing the blank state in the UI).
+
+2. **`MockDataSeeder`** — controlled by `app.mock.data-mode` in `application-local.properties`:
+
+| Mode | What gets seeded |
+|------|-----------------|
+| `NONE` *(default)* | Nothing — only DataInitializer's 2 test users |
+| `GROUP_STAGE` | 12 mock users (`user01@mock.wc26` … `user12@mock.wc26`) with 1–3 entries each, group-stage picks, third-place picks, and squad picks. No knockout picks. Use this mode to test the bracket-picks UI before the knockout stage. |
+| `FULL` | Everything in `GROUP_STAGE` plus knockout picks and player match stats with FPL fantasy points. Use this mode to test the leaderboard. |
+
+Mock user credentials: `user01@mock.wc26` through `user12@mock.wc26`, password `password`.
+
+To activate a mode, edit `backend/src/main/resources/application-local.properties`:
+
+```properties
+app.mock.data-mode=FULL
+```
 
 ### H2 Browser Console
 
@@ -118,6 +134,7 @@ All endpoints are prefixed with `/api`.
 | `GET` | `/api/tournament/status` | Current phase, live-match flag, next match date |
 | `GET` | `/api/teams/athletes` | All athletes for every tournament team |
 | `GET` | `/api/players/points` | Total fantasy points per athlete (aggregated from `player_match_stats`) |
+| `GET` | `/api/leaderboard` | All entries ranked by total fantasy points (one row per entry) |
 
 ### Protected – `Authorization: Bearer <token>` required
 
@@ -127,6 +144,7 @@ All endpoints are prefixed with `/api`.
 |--------|------|-------------|
 | `GET` | `/api/entries` | List all entries for the authenticated user (max 3) |
 | `POST` | `/api/entries` | Create a new entry; body: `{ "name": "My Squad" }` |
+| `GET` | `/api/entries/scores` | Score breakdown (group/bracket/squad/total) for every entry owned by the user |
 
 #### Picks (scoped to an entry)
 
@@ -135,7 +153,8 @@ All endpoints are prefixed with `/api`.
 | `GET` | `/api/entries/{entryId}/picks` | All picks for the given entry |
 | `PUT` | `/api/entries/{entryId}/picks/groups` | Upsert 1st and 2nd place prediction for one group |
 | `PUT` | `/api/entries/{entryId}/picks/third-place` | Replace the full set of 8 advancing third-place teams (one team per group) |
-| `PUT` | `/api/entries/{entryId}/picks/knockout` | Upsert predicted winner for a knockout match |
+| `PUT` | `/api/entries/{entryId}/picks/knockout` | Upsert predicted winner for a knockout match (`matchEventId` is a real ESPN event ID) |
+| `PUT` | `/api/entries/{entryId}/picks/squad` | Replace the full 11-player squad and formation |
 
 ---
 
@@ -213,8 +232,23 @@ Response — `AuthResponse`:
 
 **PUT /api/entries/{entryId}/picks/knockout**
 ```json
-{ "matchEventId": "694023", "winnerTeamId": "359" }
+{ "matchEventId": "760486", "winnerTeamId": "359" }
 ```
+`matchEventId` is a real ESPN event ID (e.g. `760486` = R32 match 73 of the 2026 World Cup).
+
+**PUT /api/entries/{entryId}/picks/squad**
+```json
+{
+  "formation": "4-3-3",
+  "players": [
+    { "position": "GK",  "athleteId": "4395123" },
+    { "position": "DEF", "athleteId": "4227065" },
+    { "position": "MID", "athleteId": "3901100" },
+    { "position": "FWD", "athleteId": "4871235" }
+  ]
+}
+```
+Must supply exactly 11 players matching the slot counts of the chosen formation.
 
 ---
 
@@ -231,10 +265,14 @@ controller/
   TournamentController    GET /api/tournament/status
   TeamsController         GET /api/teams/athletes
   PlayerPointsController  GET /api/players/points (delegates to WorldCupDataProvider)
+  LeaderboardController   GET /api/leaderboard (public), GET /api/entries/scores (auth)
 service/
   UserService             registration, login, password hashing
   EntryService            entry CRUD, ownership verification, max-3 enforcement
-  PickService             group/third-place/knockout pick upserts
+  PickService             group/third-place/knockout/squad pick upserts
+  ScoringService          scores every entry (group +4/+2/+20, 3rd-place +1/+10,
+                          knockout points by ESPN event ID, squad sum); produces the
+                          dense-ranked global leaderboard (ties share same rank)
   PlayerPointsService     @Scheduled sync only — fetches completed-match stats from the
                           ESPN Core API every 5 min, calculates FPL-style points, and
                           persists rows to player_match_stats; no query logic here
@@ -250,6 +288,9 @@ model/
 dto/                      immutable Java records for all request and response bodies
   AthleteDto              id, display name, position, teamId (read-only, from ESPN)
   PlayerPointsDto         athleteId, totalPoints (aggregated across all matches)
+  EntryScoreDto           entryId, entryNumber, name, groupPoints, thirdPlacePoints,
+                          bracketPoints, squadPoints, totalPoints
+  LeaderboardEntryDto     rank, displayName, email, entryNumber, entryName, totalPoints
 security/
   JwtUtil                 token generation and validation (JJWT 0.12, HS512)
   JwtAuthenticationFilter stateless JWT request filter
@@ -260,7 +301,9 @@ config/
   RestClientConfig        shared RestClient bean for ESPN HTTP calls
   CacheConfig             Caffeine cache manager with per-cache TTLs
   SchedulingConfig        enables @Scheduled support (@EnableScheduling)
-  DataInitializer         seeds test users when running with the local profile
+  DataInitializer         @Order(1) — seeds 2 test users (player1/player2) when running with local profile
+  MockDataSeeder          @Order(2) — seeds 12 mock users + entries + picks + player stats;
+                          controlled by app.mock.data-mode (NONE | GROUP_STAGE | FULL)
   LocalSecurityConfig     permits /h2-console under the local profile
 provider/
   WorldCupDataProvider    interface – swap ESPN for any other source; all controllers
@@ -402,8 +445,8 @@ The React frontend (`frontend/`) connects to this backend via a shared axios ins
 
 ### Live endpoints (wired to backend)
 
-| Hook | Endpoint |
-|------|----------|
+| Hook / method | Endpoint |
+|---------------|----------|
 | `useGroups()` | `GET /api/groups` |
 | `useStandings()` | `GET /api/standings` |
 | `useScoreboard()` | `GET /api/matches` |
@@ -411,19 +454,19 @@ The React frontend (`frontend/`) connects to this backend via a shared axios ins
 | `useTournamentInfo()` | `GET /api/tournament/status` |
 | `usePlayers()` | `GET /api/teams/athletes` |
 | `usePlayerPoints()` | `GET /api/players/points` |
+| `useLeaderboard()` | `GET /api/leaderboard` |
 | `AuthContext.login()` | `POST /api/auth/login` |
 | `AuthContext.register()` | `POST /api/auth/register` |
-| `EntryContext` (load) | `GET /api/entries` + `GET /api/entries/{id}/picks` |
+| `EntryContext` (load) | `GET /api/entries` + `GET /api/entries/{id}/picks` + `GET /api/entries/scores` |
 | `EntryContext.createEntry()` | `POST /api/entries` |
 | `EntryContext.saveGroupPick()` | `PUT /api/entries/{id}/picks/groups` |
 | `EntryContext.saveThirdPlacePicks()` | `PUT /api/entries/{id}/picks/third-place` *(sent only when all 8 are selected)* |
 | `EntryContext.saveBracketPick()` | `PUT /api/entries/{id}/picks/knockout` |
+| `EntryContext.saveSquadPick()` | `PUT /api/entries/{id}/picks/squad` |
 
 ### Still mocked (no backend endpoint yet)
 
-- `useLeaderboard()` – fantasy points leaderboard
-- `EntryContext.saveFormation()` – formation selection
-- `EntryContext.saveSquadPick()` – 11-player squad (schema exists in `squad_picks`; API not yet wired)
+- `EntryContext.saveFormation()` – formation-only update (formation is persisted as part of `saveSquadPick`)
 
 ---
 
@@ -433,7 +476,7 @@ The React frontend (`frontend/`) connects to this backend via a shared axios ins
 |---|---|---|
 | Database | H2 in-memory, wiped on restart | PostgreSQL via env vars |
 | Schema management | Hibernate `create-drop` | Flyway migrations |
-| Seed data | 2 test users + picks | None |
+| Seed data | 2 test users always; 12 mock users + picks + stats when `app.mock.data-mode=GROUP_STAGE` or `FULL` | None |
 | H2 Console | `http://localhost:8080/h2-console` | Disabled |
 | Env vars required | None | `DB_*`, `JWT_SECRET` |
 

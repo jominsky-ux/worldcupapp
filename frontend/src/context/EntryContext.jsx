@@ -63,13 +63,13 @@ function mapPicks(picksResponse) {
 /**
  * Merges a backend EntryResponse with its picks into the shape components expect.
  */
-function mapEntry(entryResponse, picksResponse) {
+function mapEntry(entryResponse, picksResponse, totalPoints = 0) {
   return {
     id: entryResponse.id,
     entryNumber: entryResponse.entryNumber,
     name: entryResponse.name,
     createdAt: entryResponse.createdAt,
-    totalPoints: 0,       // scoring not yet implemented
+    totalPoints,
     ...mapPicks(picksResponse),
   }
 }
@@ -110,19 +110,30 @@ export function EntryProvider({ children }) {
           return
         }
 
-        // Fetch picks for all entries in parallel.
-        // A failed picks fetch for one entry falls back to empty picks rather
-        // than failing the entire load.
-        const picksResults = await Promise.all(
-          entryList.map((entry) =>
-            apiClient
-              .get(`/api/entries/${entry.id}/picks`)
-              .then((r) => r.data)
-              .catch(() => null)
-          )
+        // Fetch picks for all entries and scores in parallel.
+        // A failed picks or scores fetch falls back gracefully.
+        const [picksResults, scoresResult] = await Promise.all([
+          Promise.all(
+            entryList.map((entry) =>
+              apiClient
+                .get(`/api/entries/${entry.id}/picks`)
+                .then((r) => r.data)
+                .catch(() => null)
+            )
+          ),
+          apiClient
+            .get('/api/entries/scores')
+            .then((r) => r.data)
+            .catch(() => []),
+        ])
+
+        const scoreByEntryId = new Map(
+          scoresResult.map((s) => [s.entryId, s.totalPoints])
         )
 
-        const mapped = entryList.map((entry, i) => mapEntry(entry, picksResults[i]))
+        const mapped = entryList.map((entry, i) =>
+          mapEntry(entry, picksResults[i], scoreByEntryId.get(entry.id) ?? 0)
+        )
         setEntries(mapped)
         setActiveEntryId(mapped[0].id)
       })
@@ -141,7 +152,7 @@ export function EntryProvider({ children }) {
       throw new Error('Maximum of 3 entries allowed per user')
     }
     const { data } = await apiClient.post('/api/entries', { name })
-    const newEntry = mapEntry(data, null)
+    const newEntry = mapEntry(data, null, 0)
     setEntries((prev) => [...prev, newEntry])
     setActiveEntryId(newEntry.id)
     return newEntry

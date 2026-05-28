@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -39,6 +40,7 @@ import com.jominsky.worldcupapp.repository.UserRepository;
  */
 @Component
 @Profile("local")
+@Order(1)
 public class DataInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
@@ -113,7 +115,7 @@ public class DataInitializer implements CommandLineRunner {
         User player2 = createUser("player2@test.com", "password", "Player Two", Role.USER);
 
         // Entry 1 for player1 – full set of picks
-        Entry entry1 = createEntry(player1, 1, "My Main Entry");
+        Entry entry1 = createEntry(player1, 1, "My Main Entry", "3-4-3");
         seedGroupStagePicks(entry1,
                 TEAM_MEXICO, TEAM_SOUTH_KOREA,
                 TEAM_CANADA, TEAM_SWITZERLAND,
@@ -140,7 +142,7 @@ public class DataInitializer implements CommandLineRunner {
         seedSquadPicks(entry1);
 
         // Entry 2 for player1 – different picks, no knockout picks yet
-        Entry entry2 = createEntry(player1, 2, "Long Shot Entry");
+        Entry entry2 = createEntry(player1, 2, "Long Shot Entry", "4-3-3");
         seedGroupStagePicks(entry2,
                 TEAM_SOUTH_KOREA, TEAM_CZECHIA,
                 TEAM_SWITZERLAND, TEAM_QATAR,
@@ -178,11 +180,12 @@ public class DataInitializer implements CommandLineRunner {
         return userRepository.save(user);
     }
 
-    private Entry createEntry(User user, int entryNumber, String name) {
+    private Entry createEntry(User user, int entryNumber, String name, String formation) {
         Entry entry = new Entry();
         entry.setUser(user);
         entry.setEntryNumber(entryNumber);
         entry.setName(name);
+        entry.setFormation(formation);
         return entryRepository.save(entry);
     }
 
@@ -227,11 +230,12 @@ public class DataInitializer implements CommandLineRunner {
     private void seedKnockoutPicks(Entry entry) {
         // Placeholder ESPN event IDs for knockout matches – update once the bracket is
         // set.
-        List.of(
-                knockoutPick(entry, "ko-r32-1", TEAM_USA),
-                knockoutPick(entry, "ko-r32-2", TEAM_BRAZIL),
-                knockoutPick(entry, "ko-r16-1", TEAM_FRANCE),
-                knockoutPick(entry, "ko-qf-1", TEAM_ARGENTINA)).forEach(knockoutPickRepository::save);
+        // List.of(
+        // knockoutPick(entry, "ko-r32-1", TEAM_USA),
+        // knockoutPick(entry, "ko-r32-2", TEAM_BRAZIL),
+        // knockoutPick(entry, "ko-r16-1", TEAM_FRANCE),
+        // knockoutPick(entry, "ko-qf-1",
+        // TEAM_ARGENTINA)).forEach(knockoutPickRepository::save);
     }
 
     private void seedSquadPicks(Entry entry) {

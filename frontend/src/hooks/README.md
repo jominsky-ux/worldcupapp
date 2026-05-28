@@ -1,52 +1,47 @@
 # src/hooks/ — Custom React Query Hooks
 
-This folder contains custom hooks that fetch data from the backend (or mock data during development).
+This folder contains custom hooks that fetch data from the backend using React Query (TanStack Query v5).
 
 ## What is a custom hook?
 
-A custom hook is a JavaScript function whose name starts with `use`. It can call other hooks (like `useQuery`, `useState`, `useEffect`) and encapsulates reusable logic. Components call these hooks to get data without needing to know how or where the data comes from.
+A custom hook is a JavaScript function whose name starts with `use`. It can call other hooks (like `useQuery`, `useState`, `useEffect`) and encapsulates reusable logic. Components call these hooks to get data without knowing how or where it comes from.
 
 ## useGameData.js
 
-The main data-fetching file. Contains:
+The main data-fetching file. All hooks below call the Spring Boot backend via the shared axios instance in `src/api/client.js`. The Vite proxy forwards `/api/*` to `localhost:8080` during local development.
 
-| Hook | Data fetched | Used by |
-|------|-------------|---------|
-| `useGroups()` | All 12 groups + 4 teams each | GroupStagePage, GroupCard |
-| `usePlayers(filters)` | Players list, filterable by position/search | SquadPage, PlayerCard |
-| `useLeaderboard()` | Ranked user list by points | LeaderboardPage |
-| `useTournamentInfo()` | Current phase + deadlines | CountdownBanner, PhaseGate |
-| `useSaveGroupPicks(entryId)` | Mutation — saves group picks | GroupStagePage |
+| Hook | Endpoint | Used by | Notes |
+|------|----------|---------|-------|
+| `useGroups()` | `GET /api/groups` | GroupStagePage | Cached 1 h (groups don't change mid-tournament) |
+| `useStandings()` | `GET /api/standings` | StandingsPage | Refreshes every 5 min |
+| `useScoreboard()` | `GET /api/matches` | MatchesPage | Refreshes every 1 min |
+| `useMatchSummary(eventId)` | `GET /api/matches/{id}/summary` | Match detail view | Disabled when no `eventId` |
+| `useTournamentInfo()` | `GET /api/tournament/status` | Layout, PhaseGate | Refreshes every 1 min |
+| `usePlayers(filters)` | `GET /api/teams/athletes` | SquadPage | Filtered client-side; all callers share one request |
+| `usePlayerPoints()` | `GET /api/players/points` | SquadPage | Returns a `Map<athleteId, totalPoints>`; refreshes every 5 min |
+| `useLeaderboard()` | `GET /api/leaderboard` | LeaderboardPage | One row per entry, dense-ranked; refreshes every 2 min |
+| `useSaveGroupPicks(entryId)` | *(mock delay — no backend call yet)* | GroupStagePage | Pending backend mutation endpoint |
 
 ## How React Query works
 
-```
-const { data, isLoading, isError, error } = useQuery({
-  queryKey: ['groups'],    // unique key — React Query uses this for caching
-  queryFn: fetchGroups,    // the async function that returns data
-  staleTime: 60_000,       // how long before data is considered "stale"
+```js
+const { data, isLoading, isError } = useQuery({
+  queryKey: ['groups'],    // unique cache key
+  queryFn: () => apiClient.get('/api/groups').then(r => r.data),
+  staleTime: 1000 * 60 * 60,  // how long before background refetch
 })
 ```
 
 React Query automatically:
 - Shows `isLoading = true` while the first fetch is in progress
-- Caches the result (same `queryKey` = same cached data)
-- Refetches in the background when the component re-mounts or the window refocuses
+- Caches the result under `queryKey` — the same key across components shares one request
+- Refetches in the background when a component re-mounts or the window regains focus
 - Sets `isError = true` if the fetch throws
 
-## Connecting to the real backend
+## Field normalisation
 
-Each `queryFn` currently returns mock data. To switch to real API calls, replace the mock body:
+ESPN returns some fields with different names than the mock shapes components were built against. `useGameData.js` normalises them on the way in so no component changes are needed:
 
-```js
-// Before (mock):
-queryFn: async () => {
-  await delay(300)
-  return GROUPS
-}
-
-// After (real API):
-queryFn: () => axios.get('/api/groups').then(r => r.data)
-```
-
-The `axios` instance should be configured with the base URL and auth header — see `src/utils/api.js` (to be created).
+- `team.abbreviation` → `team.code`
+- `team.logoUrl` → `team.flagUrl`
+- `athlete.position` (full ESPN name) → `GK` / `DEF` / `MID` / `FWD`

@@ -23,7 +23,8 @@
 import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
 import { useEntry } from '../context/EntryContext'
 import { PhaseGate } from '../components/shared/SharedComponents'
-import { MOCK_R32_MATCHUPS, ROUND_ORDER, ROUND_LABELS, BRACKET_TEAM_LOOKUP, MOCK_KNOCKOUT_RESULTS } from '../mocks/bracket'
+import { MOCK_R32_MATCHUPS, ROUND_ORDER, ROUND_LABELS, ROUND_MATCHUP_IDS, MATCHUP_ROUND_KEY, BRACKET_TEAM_LOOKUP, MOCK_KNOCKOUT_RESULTS } from '../mocks/bracket'
+import { BRACKET_POINTS_PER_ROUND } from '../mocks/entries'
 
 // ── Layout constants ───────────────────────────────────────────────────────
 // Each R32 matchup card occupies CARD_H px. SLOT is the repeating unit
@@ -44,14 +45,16 @@ function buildPicksMap(bracketPicks) {
 
 // Mutates `picks` (a copy) — clears any downstream pick that depended on
 // `clearedTeam`, then recurses to clear further downstream picks.
+// Uses ROUND_MATCHUP_IDS to look up parent matchup by sequential position.
 function cascadeClear(picks, matchupId, clearedTeam) {
-  const dash = matchupId.lastIndexOf('-')
-  const round = matchupId.slice(0, dash)
-  const index = parseInt(matchupId.slice(dash + 1), 10)
-  const roundIdx = ROUND_ORDER.indexOf(round)
-  if (roundIdx >= ROUND_ORDER.length - 1) return
+  let roundIdx = -1, index = -1
+  for (let r = 0; r < ROUND_ORDER.length; r++) {
+    const idx = ROUND_MATCHUP_IDS[ROUND_ORDER[r]].indexOf(matchupId)
+    if (idx !== -1) { roundIdx = r; index = idx; break }
+  }
+  if (roundIdx < 0 || roundIdx >= ROUND_ORDER.length - 1) return
 
-  const parentId = `${ROUND_ORDER[roundIdx + 1]}-${Math.floor(index / 2)}`
+  const parentId = ROUND_MATCHUP_IDS[ROUND_ORDER[roundIdx + 1]][Math.floor(index / 2)]
   if (picks[parentId]?.id === clearedTeam.id) {
     const parentTeam = picks[parentId]
     delete picks[parentId]
@@ -77,13 +80,15 @@ export default function BracketPage() {
 
   // Derive matchup objects for every round from R32 + current picks.
   // R32 teams are fixed; later-round teams are the picked winners.
+  // IDs come from ROUND_MATCHUP_IDS; sequential pairing (prev[2j]+prev[2j+1] → current[j]).
   const derivedMatchups = useMemo(() => {
     const byRound = { R32: MOCK_R32_MATCHUPS }
     for (let i = 1; i < ROUND_ORDER.length; i++) {
       const round = ROUND_ORDER[i]
       const prev = byRound[ROUND_ORDER[i - 1]]
+      const ids = ROUND_MATCHUP_IDS[round]
       byRound[round] = Array.from({ length: prev.length / 2 }, (_, j) => ({
-        id: `${round}-${j}`,
+        id: ids[j],
         home: picks[prev[2 * j].id] ?? null,
         away: picks[prev[2 * j + 1].id] ?? null,
       }))
@@ -131,6 +136,23 @@ export default function BracketPage() {
 
   const totalPicks = Object.keys(picks).length
 
+  const pointsByRound = useMemo(() => {
+    const map = {}
+    for (const [matchupId, team] of Object.entries(picks)) {
+      const result = results[matchupId]
+      if (!result || String(team.id) !== String(result.winnerId)) continue
+      const round = MATCHUP_ROUND_KEY[matchupId]
+      if (!round) continue
+      map[round] = (map[round] ?? 0) + (BRACKET_POINTS_PER_ROUND[round] ?? 0)
+    }
+    return map
+  }, [picks, results])
+
+  const totalBracketPoints = useMemo(
+    () => Object.values(pointsByRound).reduce((s, v) => s + v, 0),
+    [pointsByRound]
+  )
+
   if (!activeEntry) return (
     <div className="card text-center py-12 space-y-2">
       <p className="font-body font-semibold text-brand text-lg">No entry selected</p>
@@ -163,19 +185,29 @@ export default function BracketPage() {
               onSwitch={setActiveEntryId}
             />
           </div>
-          {isReadOnly ? (
-            <span className="badge bg-gray-100 text-gray-500 font-body text-xs shrink-0 self-start mt-1">
-              Bracket locked — read only
-            </span>
-          ) : (
-            <button
-              onClick={handleSaveAll}
-              disabled={saving || totalPicks === 0}
-              className="btn-primary shrink-0"
-            >
-              {saving ? 'Saving…' : saved ? '✓ Saved!' : `Save Bracket (${totalPicks}/31)`}
-            </button>
-          )}
+          <div className="flex flex-col items-end gap-2 shrink-0 self-start mt-1">
+            {totalPicks > 0 && (
+              <p className="text-right font-body">
+                <span className="tabular-nums font-semibold text-2xl text-brand">
+                  {totalBracketPoints}
+                </span>
+                <span className="text-sm text-gray-400 ml-1">bracket pts</span>
+              </p>
+            )}
+            {isReadOnly ? (
+              <span className="badge bg-gray-100 text-gray-500 font-body text-xs">
+                Bracket locked — read only
+              </span>
+            ) : (
+              <button
+                onClick={handleSaveAll}
+                disabled={saving || totalPicks === 0}
+                className="btn-primary"
+              >
+                {saving ? 'Saving…' : saved ? '✓ Saved!' : `Save Bracket (${totalPicks}/31)`}
+              </button>
+            )}
+          </div>
         </div>
 
         {error && (
@@ -191,8 +223,7 @@ export default function BracketPage() {
             <strong>R16:</strong> +8 pts ·{' '}
             <strong>QF:</strong> +16 pts ·{' '}
             <strong>SF:</strong> +32 pts ·{' '}
-            <strong>Final:</strong> +64 pts ·{' '}
-            <strong>Champion:</strong> +128 pts
+            <strong>Final:</strong> +64 pts
           </p>
         </div>
 
@@ -207,9 +238,16 @@ export default function BracketPage() {
 
               return (
                 <div key={round} style={{ width: 164 }}>
-                  <p className="text-[11px] font-semibold text-center text-gray-400 font-body mb-2 uppercase tracking-wider whitespace-nowrap">
-                    {ROUND_LABELS[round]}
-                  </p>
+                  <div className="mb-2 text-center">
+                    <p className="text-[11px] font-semibold text-gray-400 font-body uppercase tracking-wider whitespace-nowrap">
+                      {ROUND_LABELS[round]}
+                    </p>
+                    {pointsByRound[round] > 0 && (
+                      <p className="text-xs font-bold text-green-600 tabular-nums leading-tight">
+                        +{pointsByRound[round]} pts
+                      </p>
+                    )}
+                  </div>
                   <div style={{ paddingTop }}>
                     {matchups.map((matchup, i) => (
                       <Fragment key={matchup.id}>
@@ -240,7 +278,10 @@ export default function BracketPage() {
 // ── MatchupCard ────────────────────────────────────────────────────────────
 function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
   const slotH = CARD_H / 2
-  const actualWinnerId = results[matchup.id]
+  const matchResult = results[matchup.id]
+  const actualWinnerId = matchResult?.winnerId
+  const round = MATCHUP_ROUND_KEY[matchup.id]
+  const roundPts = BRACKET_POINTS_PER_ROUND[round] ?? 0
 
   return (
     <div
@@ -251,6 +292,8 @@ function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
         team={matchup.home}
         isSelected={pick?.id === matchup.home?.id}
         actualWinnerId={actualWinnerId}
+        score={matchResult != null ? matchResult.homeScore : null}
+        roundPts={roundPts}
         height={slotH}
         borderBottom
         isReadOnly={isReadOnly}
@@ -260,6 +303,8 @@ function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
         team={matchup.away}
         isSelected={pick?.id === matchup.away?.id}
         actualWinnerId={actualWinnerId}
+        score={matchResult != null ? matchResult.awayScore : null}
+        roundPts={roundPts}
         height={slotH}
         isReadOnly={isReadOnly}
         onSelect={() => matchup.away && onPick(matchup.id, matchup.away)}
@@ -269,8 +314,8 @@ function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
 }
 
 // ── TeamSlot ───────────────────────────────────────────────────────────────
-function TeamSlot({ team, isSelected, actualWinnerId, height, borderBottom, isReadOnly, onSelect }) {
-  const base = `w-full flex items-center gap-2 px-2.5 text-left transition-colors${borderBottom ? ' border-b border-gray-100' : ''}`
+function TeamSlot({ team, isSelected, actualWinnerId, score, roundPts, height, borderBottom, isReadOnly, onSelect }) {
+  const base = `w-full flex items-center gap-1.5 px-2.5 text-left transition-colors${borderBottom ? ' border-b border-gray-100' : ''}`
 
   if (!team) {
     return (
@@ -279,6 +324,9 @@ function TeamSlot({ team, isSelected, actualWinnerId, height, borderBottom, isRe
       </div>
     )
   }
+
+  const isCorrect = isSelected && actualWinnerId !== undefined
+    && String(team.id) === String(actualWinnerId)
 
   let colorClass
   if (isSelected && actualWinnerId !== undefined) {
@@ -301,7 +349,17 @@ function TeamSlot({ team, isSelected, actualWinnerId, height, borderBottom, isRe
         alt={team.code}
         className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0"
       />
-      <span className="font-body text-xs font-semibold truncate">{team.code}</span>
+      <div className="flex items-center gap-1 flex-1 min-w-0">
+        <span className="font-body text-xs font-semibold truncate min-w-0">{team.code}</span>
+        {isCorrect && (
+          <span className="shrink-0 text-[10px] font-bold leading-none bg-green-600 text-white px-1 py-0.5 rounded">
+            +{roundPts}
+          </span>
+        )}
+      </div>
+      {score !== null && (
+        <span className="tabular-nums text-xs font-bold shrink-0">{score}</span>
+      )}
     </button>
   )
 }

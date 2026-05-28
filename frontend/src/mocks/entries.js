@@ -88,7 +88,6 @@ export const BRACKET_POINTS_PER_ROUND = {
   QF: 16,
   SF: 32,
   FINAL: 64,
-  WINNER: 128,
 }
 
 export const GROUP_POINTS = {

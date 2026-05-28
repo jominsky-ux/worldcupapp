@@ -50,13 +50,14 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { useGroups } from '../hooks/useGameData'
+import { useGroups, useStandings } from '../hooks/useGameData'
 import { useEntry } from '../context/EntryContext'
 import { PhaseGate, LoadingSpinner } from '../components/shared/SharedComponents'
 import { MAX_THIRD_PLACE_PICKS } from '../mocks/entries'
 
 export default function GroupStagePage() {
   const { data: groups = [], isLoading, isError } = useGroups()
+  const { data: standings = [] } = useStandings()
   const {
     entries,
     activeEntry,
@@ -127,6 +128,49 @@ export default function GroupStagePage() {
     }
     return ids
   }, [groupPicksState])
+
+  // ── Derived: actual standings positions keyed by group ID ─────────────────
+  // Matches standings groups (keyed by name) to groups (keyed by id).
+  // Both /api/groups and /api/standings draw from the same ESPN standings
+  // endpoint, so the team ordering is consistent even before games are played.
+  const standingsByGroupId = useMemo(() => {
+    if (!standings.length || !groups.length) return new Map()
+    const nameToPos = new Map()
+    for (const sg of standings) {
+      nameToPos.set(sg.groupName, {
+        first:  sg.teams[0]?.team?.id ?? null,
+        second: sg.teams[1]?.team?.id ?? null,
+        third:  sg.teams[2]?.team?.id ?? null,
+      })
+    }
+    const map = new Map()
+    for (const group of groups) {
+      const pos = nameToPos.get(group.name)
+      if (pos) map.set(group.id, pos)
+    }
+    return map
+  }, [standings, groups])
+
+  // ── Derived: points earned totals for tab labels ───────────────────────────
+  const earnedGroupPts = useMemo(() => {
+    let pts = 0
+    for (const [gid, pick] of groupPicksState) {
+      const actual = standingsByGroupId.get(gid)
+      if (!actual) continue
+      if (pick.firstPlaceTeamId && pick.firstPlaceTeamId === actual.first)   pts += 4
+      if (pick.secondPlaceTeamId && pick.secondPlaceTeamId === actual.second) pts += 2
+    }
+    return pts
+  }, [groupPicksState, standingsByGroupId])
+
+  const earnedThirdPts = useMemo(() => {
+    let pts = 0
+    for (const [gid, teamId] of thirdPlacePickMap) {
+      const actual = standingsByGroupId.get(gid)
+      if (actual && teamId === actual.third) pts += 1
+    }
+    return pts
+  }, [thirdPlacePickMap, standingsByGroupId])
 
   // ── handleGroupPick ───────────────────────────────────────────────────────
   // Called by GroupCard when the user clicks a 1st or 2nd radio.
@@ -297,11 +341,13 @@ export default function GroupStagePage() {
             active={activeTab === 'groups'}
             onClick={() => setActiveTab('groups')}
             label={`Group Picks (${completedGroups}/${groups.length})`}
+            pts={earnedGroupPts}
           />
           <TabButton
             active={activeTab === 'third'}
             onClick={() => setActiveTab('third')}
             label={`3rd Place Picks (${thirdPlacePickMap.size}/${MAX_THIRD_PLACE_PICKS})`}
+            pts={earnedThirdPts}
           />
         </div>
 
@@ -331,6 +377,7 @@ export default function GroupStagePage() {
                 picks={groupPicksState.get(group.id) ?? null}
                 onPick={handleGroupPick}
                 isReadOnly={isReadOnly}
+                actualPositions={standingsByGroupId.get(group.id) ?? null}
               />
             ))}
           </div>
@@ -345,6 +392,7 @@ export default function GroupStagePage() {
             selectedIds={thirdPlaceTeamIds}
             onToggle={handleThirdPlaceToggle}
             isReadOnly={isReadOnly}
+            standingsByGroupId={standingsByGroupId}
           />
         )}
       </div>
@@ -405,16 +453,24 @@ function EntryIndicator({ entries, activeEntry, activeEntryId, onSwitch }) {
 }
 
 // ── TabButton ──────────────────────────────────────────────────────────────
-function TabButton({ active, onClick, label }) {
+function TabButton({ active, onClick, label, pts = 0 }) {
   return (
     <button
       onClick={onClick}
       className={[
-        'px-4 py-2.5 text-sm font-body font-medium transition-colors whitespace-nowrap',
+        'flex items-center gap-2 px-4 py-2.5 text-sm font-body font-medium transition-colors whitespace-nowrap',
         active ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50',
       ].join(' ')}
     >
       {label}
+      {pts > 0 && (
+        <span className={[
+          'text-xs font-semibold rounded-full px-1.5 py-0.5',
+          active ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700',
+        ].join(' ')}>
+          +{pts}
+        </span>
+      )}
     </button>
   )
 }
@@ -438,7 +494,7 @@ function TabButton({ active, onClick, label }) {
  * Each team row shows a 1.4rem flag emoji with role="img" + aria-label,
  * followed by the full country name. No 3-letter abbreviations.
  */
-function GroupCard({ group, picks, onPick, isReadOnly = false }) {
+function GroupCard({ group, picks, onPick, isReadOnly = false, actualPositions = null }) {
   const firstPlaceTeamId = picks?.firstPlaceTeamId ?? null
   const secondPlaceTeamId = picks?.secondPlaceTeamId ?? null
   const [saving, setSaving] = useState(false)
@@ -573,6 +629,9 @@ function GroupCard({ group, picks, onPick, isReadOnly = false }) {
               <span className="font-semibold text-brand">{firstTeam?.name}</span>
               {' '}1st
             </span>
+            {actualPositions && firstPlaceTeamId === actualPositions.first && (
+              <span className="badge bg-green-100 text-green-700 text-xs font-semibold">+4 pts</span>
+            )}
           </div>
           <div className="flex items-center gap-1.5">
             <img
@@ -584,6 +643,9 @@ function GroupCard({ group, picks, onPick, isReadOnly = false }) {
               <span className="font-semibold text-brand">{secondTeam?.name}</span>
               {' '}2nd
             </span>
+            {actualPositions && secondPlaceTeamId === actualPositions.second && (
+              <span className="badge bg-green-100 text-green-700 text-xs font-semibold">+2 pts</span>
+            )}
           </div>
         </div>
       )}
@@ -621,7 +683,7 @@ function GroupCard({ group, picks, onPick, isReadOnly = false }) {
  *   selectedIds     — Set<teamId> — currently selected 3rd-place picks
  *   onToggle        — (teamId, groupId) => void
  */
-function ThirdPlacePanel({ groups, groupPicksState, topTwoPickedIds, selectedIds, onToggle, isReadOnly = false }) {
+function ThirdPlacePanel({ groups, groupPicksState, topTwoPickedIds, selectedIds, onToggle, isReadOnly = false, standingsByGroupId = new Map() }) {
   // Build a map: groupId → the one selected 3rd-place team ID from that group
   const groupThirdPickMap = useMemo(() => {
     const map = new Map()
@@ -716,6 +778,9 @@ function ThirdPlacePanel({ groups, groupPicksState, topTwoPickedIds, selectedIds
                     (!isSelected && groupHasPick) ||
                     (!isSelected && atCap)
 
+                  const actual = standingsByGroupId.get(group.id)
+                  const isCorrect = isSelected && actual && actual.third === team.id
+
                   return (
                     <button
                       key={team.id}
@@ -740,6 +805,7 @@ function ThirdPlacePanel({ groups, groupPicksState, topTwoPickedIds, selectedIds
                       />
                       <span className="font-medium">{team.name}</span>
                       {isSelected && <span className="ml-0.5 opacity-80">✓</span>}
+                      {isCorrect && <span className="ml-0.5 text-xs font-bold opacity-90">+1</span>}
                     </button>
                   )
                 })}

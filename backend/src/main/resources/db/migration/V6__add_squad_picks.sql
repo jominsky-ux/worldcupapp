@@ -1,7 +1,7 @@
 -- Add formation to entries (nullable; set when user saves their squad)
 -- Only the eight supported formations are allowed.
 ALTER TABLE entries
-    ADD COLUMN formation VARCHAR(10)
+    ADD COLUMN formation VARCHAR(10) NOT NULL
         CHECK (formation IN ('3-5-2', '3-4-3', '4-5-1', '4-4-2', '4-3-3', '5-4-1', '5-3-2', '5-2-3'));
 
 -- One row per player in the starting XI, keyed to an entry.

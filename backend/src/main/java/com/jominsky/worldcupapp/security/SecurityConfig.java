@@ -44,7 +44,8 @@ public class SecurityConfig {
                                 "/api/matches/**",
                                 "/api/tournament/**",
                                 "/api/teams/**",
-                                "/api/players/**")
+                                "/api/players/**",
+                                "/api/leaderboard")
                         .permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex

@@ -59,10 +59,10 @@ export default function LeaderboardPage() {
           </thead>
           <tbody>
             {leaderboard.map((row) => {
-              const isMe = row.username === user?.username
+              const isMe = row.email === user?.email
               return (
                 <tr
-                  key={row.rank}
+                  key={`${row.email}-${row.entryNumber}`}
                   className={[
                     'border-b border-gray-50 last:border-0 transition-colors',
                     isMe ? 'bg-gold/5' : 'hover:bg-surface-secondary',
@@ -86,7 +86,7 @@ export default function LeaderboardPage() {
                       )}
                     </div>
                     <p className="text-xs text-gray-400 font-body">
-                      {row.entries} {row.entries === 1 ? 'entry' : 'entries'}
+                      {row.entryName}
                     </p>
                   </td>
                   <td className="px-6 py-4 text-right">

@@ -67,6 +67,11 @@ export default function SquadPage() {
 
   const { data: pointsMap = new Map() } = usePlayerPoints()
 
+  const totalSquadPoints = useMemo(
+    () => [...squadIds].reduce((sum, id) => sum + (pointsMap.get(id) ?? 0), 0),
+    [squadIds, pointsMap]
+  )
+
   // Full unfiltered list — used for position/team lookups on selected players.
   // Shares the ['athletes'] cache with the filtered call below; no extra request.
   const { data: rawAllPlayers = [] } = usePlayers()
@@ -264,19 +269,29 @@ export default function SquadPage() {
               onSwitch={setActiveEntryId}
             />
           </div>
-          {isReadOnly ? (
-            <span className="badge bg-gray-100 text-gray-500 font-body text-xs shrink-0 self-start mt-1">
-              Picks locked — read only
-            </span>
-          ) : (
-            <button
-              onClick={handleSave}
-              disabled={saving || !saveReady}
-              className="btn-primary shrink-0"
-            >
-              {saving ? 'Saving…' : saved ? '✓ Saved!' : `Save Squad (${squadIds.size}/${SQUAD_RULES.total})`}
-            </button>
-          )}
+          <div className="flex flex-col items-end gap-2 shrink-0 self-start mt-1">
+            {squadIds.size > 0 && (
+              <p className="text-right font-body">
+                <span className="tabular-nums font-semibold text-2xl text-brand">
+                  {totalSquadPoints}
+                </span>
+                <span className="text-sm text-gray-400 ml-1">squad pts</span>
+              </p>
+            )}
+            {isReadOnly ? (
+              <span className="badge bg-gray-100 text-gray-500 font-body text-xs">
+                Picks locked — read only
+              </span>
+            ) : (
+              <button
+                onClick={handleSave}
+                disabled={saving || !saveReady}
+                className="btn-primary"
+              >
+                {saving ? 'Saving…' : saved ? '✓ Saved!' : `Save Squad (${squadIds.size}/${SQUAD_RULES.total})`}
+              </button>
+            )}
+          </div>
         </div>
 
         {error && (

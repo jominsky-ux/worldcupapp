@@ -14,9 +14,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import apiClient from '../api/client'
-import { MOCK_LEADERBOARD, DEADLINES } from '../mocks/entries'
 
-// Simulated delay — used only by hooks that are still on mock data.
 const delay = (ms = 400) => new Promise((r) => setTimeout(r, ms))
 
 // ─── Phase mapping ─────────────────────────────────────────────────────────
@@ -249,22 +247,28 @@ export function usePlayerPoints() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// LEADERBOARD — MOCK (no backend endpoint yet)
+// LEADERBOARD — LIVE
 // ══════════════════════════════════════════════════════════════════════════
 
 /**
  * useLeaderboard — fetches the ranked list of all users by total points.
- * Still uses mock data; replace queryFn body with:
- *   apiClient.get('/api/leaderboard').then(r => r.data)
- * when the backend endpoint is ready.
+ * Source: GET /api/leaderboard (publicly accessible, no auth required)
+ * Refreshes every 2 minutes during live matches.
  */
 export function useLeaderboard() {
   return useQuery({
     queryKey: ['leaderboard'],
-    queryFn: async () => {
-      await delay(400)
-      return MOCK_LEADERBOARD
-    },
+    queryFn: () =>
+      apiClient.get('/api/leaderboard').then((res) =>
+        res.data.map((row) => ({
+          rank: row.rank,
+          username: row.displayName,
+          email: row.email,
+          entryNumber: row.entryNumber,
+          entryName: row.entryName,
+          totalPoints: row.totalPoints,
+        }))
+      ),
     staleTime: 1000 * 60 * 2,
     refetchInterval: 1000 * 60 * 2,
   })
