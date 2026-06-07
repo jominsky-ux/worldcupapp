@@ -25,4 +25,18 @@ public class LocalSecurityConfig {
 
         return http.build();
     }
+
+    // In local, management.server.port=8080 so actuator shares the main port
+    // and falls under Spring Security. Permit /actuator/** without auth so
+    // you can reach /actuator/health and /actuator/prometheus during dev.
+    @Bean
+    @Order(2)
+    public SecurityFilterChain actuatorFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/actuator/**")
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+
+        return http.build();
+    }
 }

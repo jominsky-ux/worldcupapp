@@ -20,12 +20,15 @@
 // ── Run alongside the Spring Boot container ───────────────────────────────────
 //   docker run -d --name alloy \
 //     --network host \
-//     -v /var/run/docker.sock:/var/run/docker.sock:ro \
-//     -v /path/to/observability/alloy-config.alloy:/etc/alloy/config.alloy:ro \
+//     --group-add $(stat -c '%g' /var/run/docker.sock) \
+//     -v /var/run/docker.sock:/var/run/docker.sock \
+//     -v /home/ec2-user/alloy-config.alloy:/etc/alloy/config.alloy:ro \
 //     --env-file /etc/alloy.env \
 //     grafana/alloy:latest run /etc/alloy/config.alloy
 //
-// --network host lets Alloy reach localhost:9090 (Spring Boot management port).
+// --network host  lets Alloy reach localhost:9090 (Spring Boot management port).
+// --group-add     gives the container access to the Docker socket (no :ro — Unix
+//                 sockets need write access for bidirectional communication).
 // ─────────────────────────────────────────────────────────────────────────────
 
 
