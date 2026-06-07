@@ -15,6 +15,7 @@ A React single-page application for picking World Cup brackets and fantasy playe
 | **Tailwind CSS** | Utility-first CSS framework |
 | **date-fns** | Date formatting and countdown calculations |
 | **Axios** | HTTP client for API calls (not yet wired — mocks used in dev) |
+| **@sentry/react** | Frontend error tracking and session replay (disabled if `VITE_SENTRY_DSN` is unset) |
 
 ---
 
@@ -270,6 +271,11 @@ VITE_API_BASE_URL=http://localhost:8080
 # Optional — override the live tournament phase for local development
 # Valid values: PRE_TOURNAMENT | GROUP_STAGE | KNOCKOUT
 # VITE_DEV_PHASE=PRE_TOURNAMENT
+
+# Optional — Sentry DSN for error tracking and session replay.
+# Create a project at sentry.io and copy the DSN from Settings → Client Keys.
+# Leave unset locally unless you want to test Sentry; set via GitHub Secret in CI for production builds.
+# VITE_SENTRY_DSN=https://xxxxxxxxxxxxxxxx@oxxxxxx.ingest.sentry.io/xxxxxxx
 ```
 
-All Vite environment variables must start with `VITE_` to be accessible in the browser. In production, `VITE_API_BASE_URL` is set to the backend CloudFront URL during the CI build step.
+All Vite environment variables must start with `VITE_` to be accessible in the browser. In production, `VITE_API_BASE_URL` is set to the backend CloudFront URL during the CI build step. `VITE_SENTRY_DSN` is injected by the CI workflow from a GitHub Actions secret.

@@ -8,8 +8,10 @@ A full-stack fantasy sports application for the 2026 FIFA World Cup. Users creat
 
 ```
 worldcupapp/
-├── backend/    Java 17 / Spring Boot 3 REST API
-└── frontend/   React 18 / Vite single-page application
+├── backend/         Java 17 / Spring Boot 3 REST API
+├── frontend/        React 18 / Vite single-page application
+├── observability/   Grafana Alloy pipeline config
+└── architecture.html  Interactive deployment diagram (open in browser)
 ```
 
 The frontend communicates with the backend over a JSON REST API secured with JWT tokens. Live World Cup data (standings, scoreboard, rosters, per-player match statistics) is sourced from the ESPN public API and cached server-side.
@@ -32,7 +34,7 @@ The frontend communicates with the backend over a JSON REST API secured with JWT
                                                    rosters         (@Scheduled, 5 min)
 ```
 
-**Production infrastructure:** EC2 t3.micro running Docker + Nginx (HTTP → Spring Boot). A second CloudFront distribution sits in front of EC2 and provides free HTTPS via `*.cloudfront.net`. GitHub Actions builds the Docker image, pushes to ECR, and deploys via SSH.
+**Production infrastructure:** EC2 t3.micro running Docker + Nginx (HTTP → Spring Boot). CloudFront serves the React build from S3 and reverse-proxies `/api/*` to EC2, providing free HTTPS via `*.cloudfront.net`. GitHub Actions builds the Docker image, pushes to Amazon ECR, deploys via SSH to EC2, and uploads the React build to S3.
 
 ---
 
@@ -51,6 +53,8 @@ The frontend communicates with the backend over a JSON REST API secured with JWT
 | Caching | Caffeine (1 min – 24 h TTL per cache) |
 | External data | ESPN site API + ESPN Core v2 API |
 | Deployment | EC2 t3.micro + Docker + Nginx + CloudFront |
+| Metrics | Spring Boot Actuator → Grafana Cloud (port 9090, never exposed externally) |
+| Logs | Structured JSON stdout → Grafana Alloy → Grafana Cloud Loki |
 
 ### Key API areas
 
@@ -87,6 +91,7 @@ See [backend/README.md](backend/README.md) for production setup, environment var
 | Server state | TanStack React Query 5 |
 | Styling | Tailwind CSS 3.4 |
 | HTTP client | Axios |
+| Error tracking | Sentry (disabled unless `VITE_SENTRY_DSN` is set) |
 
 ### Pages
 
@@ -109,6 +114,20 @@ npm run dev
 ```
 
 See [frontend/README.md](frontend/README.md) for environment variables, mock data usage, and component structure.
+
+---
+
+## Observability
+
+Three free-tier services cover all three observability pillars:
+
+| Pillar | Tool | How |
+|--------|------|-----|
+| Metrics | Grafana Cloud (Mimir) | Grafana Alloy scrapes `/actuator/prometheus` every 15 s from `localhost:9090` |
+| Logs | Grafana Cloud (Loki) | Alloy tails Docker container stdout and ships to Loki; query with `{job="worldcupapp"}` |
+| Errors | Sentry (free tier) | React SDK captures frontend exceptions and session replays; 5k errors/month |
+
+Alloy runs as a Docker container alongside the Spring Boot container on EC2. Config: [`observability/alloy-config.alloy`](observability/alloy-config.alloy).
 
 ---
 

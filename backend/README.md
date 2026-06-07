@@ -108,6 +108,8 @@ Environment variables are passed as `-e` flags in the `docker run` command (see 
 | Property | Default | Description |
 |----------|---------|-------------|
 | `server.port` | `8080` | HTTP port |
+| `management.server.port` | `9090` (prod) / `8080` (local) | Actuator management port — set to `9090` in production so Nginx never exposes it; overridden to `8080` via `application-local.properties` |
+| `management.endpoints.web.exposure.include` | `health,prometheus,info` | Actuator endpoints exposed over HTTP |
 | `app.cors.allowed-origins` | `http://localhost:3000` | Comma-separated allowed CORS origins |
 | `app.espn.base-url` | ESPN site API URL | Base URL for scoreboard and match-summary endpoints |
 | `app.espn.standings-url` | ESPN v2 standings URL | Separate URL for the standings endpoint |
@@ -304,7 +306,7 @@ config/
   DataInitializer         @Order(1) — seeds 2 test users (player1/player2) when running with local profile
   MockDataSeeder          @Order(2) — seeds 12 mock users + entries + picks + player stats;
                           controlled by app.mock.data-mode (NONE | GROUP_STAGE | FULL)
-  LocalSecurityConfig     permits /h2-console under the local profile
+  LocalSecurityConfig     permits /h2-console (@Order 1) and /actuator/** (@Order 2) under the local profile
 provider/
   WorldCupDataProvider    interface – swap ESPN for any other source; all controllers
                           depend only on this interface, never on a concrete class
@@ -361,7 +363,7 @@ erDiagram
         uuid        user_id         FK  "not null"
         integer     entry_number        "1–3, not null"
         varchar50   name                "optional display name"
-        varchar10   formation           "e.g. 4-4-2, nullable"
+        varchar10   formation           "e.g. 4-3-3, NOT NULL DEFAULT 4-3-3"
         timestamptz created_at          "not null"
         timestamptz updated_at          "not null"
     }
@@ -479,6 +481,31 @@ The React frontend (`frontend/`) connects to this backend via a shared axios ins
 | Seed data | 2 test users always; 12 mock users + picks + stats when `app.mock.data-mode=GROUP_STAGE` or `FULL` | None |
 | H2 Console | `http://localhost:8080/h2-console` | Disabled |
 | Env vars required | None | `DB_*`, `JWT_SECRET` |
+
+---
+
+## Observability
+
+### Metrics — Spring Boot Actuator + Prometheus
+
+Actuator is included as a dependency (`spring-boot-starter-actuator` + `micrometer-registry-prometheus`). In production the management server runs on a separate port (`9090`) so the Nginx proxy (port 80 → 8080) never exposes actuator endpoints externally.
+
+| Endpoint | URL (prod) | Notes |
+|----------|------------|-------|
+| Health | `http://localhost:9090/actuator/health` | Liveness / readiness check |
+| Prometheus | `http://localhost:9090/actuator/prometheus` | JVM, HTTP, DB pool, and custom metrics |
+
+Grafana Alloy scrapes the Prometheus endpoint every 15 s and ships to Grafana Cloud. See [`observability/alloy-config.alloy`](../observability/alloy-config.alloy) for the full pipeline config.
+
+### Structured logging — Loki
+
+In any profile other than `local`, `logback-spring.xml` writes every log line as a JSON object using `logstash-logback-encoder`. Docker captures stdout; Alloy ships the container logs to Grafana Loki. Query logs with `{job="worldcupapp"}` in Grafana Explore.
+
+In the `local` profile, logs are plain human-readable text with colour coding.
+
+### Frontend errors — Sentry
+
+The React frontend ships errors to Sentry (see `frontend/README.md`). No backend changes are required; Sentry is frontend-only.
 
 ---
 
