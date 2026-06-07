@@ -130,10 +130,11 @@ export default function GroupStagePage() {
   }, [groupPicksState])
 
   // ── Derived: actual standings positions keyed by group ID ─────────────────
-  // Matches standings groups (keyed by name) to groups (keyed by id).
-  // Both /api/groups and /api/standings draw from the same ESPN standings
-  // endpoint, so the team ordering is consistent even before games are played.
+  // Only populated once the tournament has started. ESPN returns teams in a
+  // fixed pre-game ordering before any matches are played, which would cause
+  // spurious +pts badges if we compared picks to it during PRE_TOURNAMENT.
   const standingsByGroupId = useMemo(() => {
+    if (phase === 'PRE_TOURNAMENT') return new Map()
     if (!standings.length || !groups.length) return new Map()
     const nameToPos = new Map()
     for (const sg of standings) {
@@ -149,7 +150,7 @@ export default function GroupStagePage() {
       if (pos) map.set(group.id, pos)
     }
     return map
-  }, [standings, groups])
+  }, [standings, groups, phase])
 
   // ── Derived: points earned totals for tab labels ───────────────────────────
   const earnedGroupPts = useMemo(() => {
