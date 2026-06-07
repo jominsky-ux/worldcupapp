@@ -1,0 +1,82 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Grafana Alloy — World Cup App observability pipeline
+//
+// Ships Spring Boot Prometheus metrics and Docker container logs to
+// Grafana Cloud free tier (10k metric series, 50 GB logs/month).
+//
+// ── Setup ────────────────────────────────────────────────────────────────────
+// 1. Sign up at grafana.com → My Account → your Stack
+// 2. Under "Prometheus" → Details: copy Remote Write URL + numeric user ID
+// 3. Under "Loki"       → Details: copy Loki URL + numeric user ID
+// 4. Create an API key: Security → Access Policies → Add token (MetricsPublisher + LogsPublisher)
+// 5. Add to /etc/environment on the EC2 instance (or inject via docker --env-file):
+//
+//   GRAFANA_PROMETHEUS_URL=https://prometheus-prod-xx-xx.grafana.net/api/prom/push
+//   GRAFANA_PROMETHEUS_USER=123456
+//   GRAFANA_LOKI_URL=https://logs-prod-xx.grafana.net/loki/api/v1/push
+//   GRAFANA_LOKI_USER=789012
+//   GRAFANA_API_KEY=glc_eyJ...
+//
+// ── Run alongside the Spring Boot container ───────────────────────────────────
+//   docker run -d --name alloy \
+//     --network host \
+//     -v /var/run/docker.sock:/var/run/docker.sock:ro \
+//     -v /path/to/observability/alloy-config.alloy:/etc/alloy/config.alloy:ro \
+//     --env-file /etc/alloy.env \
+//     grafana/alloy:latest run /etc/alloy/config.alloy
+//
+// --network host lets Alloy reach localhost:9090 (Spring Boot management port).
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+// ── Prometheus metrics ────────────────────────────────────────────────────────
+
+prometheus.scrape "spring_boot" {
+  // Management server runs on port 9090 (separate from the app on 8080)
+  // so Nginx never exposes it externally.
+  targets = [{
+    __address__ = "localhost:9090",
+    job         = "worldcupapp-backend",
+  }]
+  metrics_path    = "/actuator/prometheus"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = env("GRAFANA_PROMETHEUS_URL")
+    basic_auth {
+      username = env("GRAFANA_PROMETHEUS_USER")
+      password = env("GRAFANA_API_KEY")
+    }
+  }
+}
+
+
+// ── Docker container logs → Loki ──────────────────────────────────────────────
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+loki.source.docker "docker_logs" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.docker.containers.targets
+  forward_to = [loki.write.grafana_cloud.receiver]
+
+  // Extra label so every log line is queryable with {job="worldcupapp"} in Loki.
+  labels = {
+    job = "worldcupapp",
+  }
+}
+
+loki.write "grafana_cloud" {
+  endpoint {
+    url = env("GRAFANA_LOKI_URL")
+    basic_auth {
+      username = env("GRAFANA_LOKI_USER")
+      password = env("GRAFANA_API_KEY")
+    }
+  }
+}

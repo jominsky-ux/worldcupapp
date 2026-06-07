@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <!--
+    Local profile: plain human-readable output to the console.
+    Colour-coded by level; full DEBUG available for our packages.
+  -->
+  <springProfile name="local">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) [%cyan(%logger{36})] %msg%n</pattern>
+      </encoder>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="CONSOLE"/>
+    </root>
+    <logger name="com.jominsky.worldcupapp" level="DEBUG"/>
+  </springProfile>
+
+  <!--
+    Production profile: structured JSON to stdout.
+    Docker captures stdout; Grafana Alloy ships it to Loki.
+    Every line is a valid JSON object parseable by LogQL.
+  -->
+  <springProfile name="!local">
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <fieldNames>
+          <timestamp>timestamp</timestamp>
+          <message>message</message>
+          <logger>logger</logger>
+          <level>level</level>
+          <thread>thread</thread>
+          <stackTrace>exception</stackTrace>
+        </fieldNames>
+        <!-- Include MDC keys set by request filters (e.g. userId, traceId) -->
+        <includeMdcKeyName>userId</includeMdcKeyName>
+        <includeMdcKeyName>traceId</includeMdcKeyName>
+      </encoder>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="JSON_CONSOLE"/>
+    </root>
+    <!-- Reduce ESPN polling noise; errors still surface -->
+    <logger name="com.jominsky.worldcupapp.provider.espn" level="WARN"/>
+  </springProfile>
+
+</configuration>
