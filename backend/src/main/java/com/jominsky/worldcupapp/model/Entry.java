@@ -35,8 +35,8 @@ public class Entry {
     @Column(length = 50)
     private String name;
 
-    @Column(length = 10)
-    private String formation;
+    @Column(length = 10, nullable = false)
+    private String formation = "4-3-3";
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
