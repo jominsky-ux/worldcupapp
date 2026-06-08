@@ -56,6 +56,14 @@ jobs:
               -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
               -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
               -e APP_CORS_ALLOWED_ORIGINS=${{ secrets.FRONTEND_URL }} \
+              -e FRONTEND_URL=${{ secrets.FRONTEND_URL }} \
+              -e MAIL_HOST=email-smtp.us-east-2.amazonaws.com \
+              -e MAIL_PORT=587 \
+              -e MAIL_USERNAME=${{ secrets.SES_SMTP_USERNAME }} \
+              -e MAIL_PASSWORD=${{ secrets.SES_SMTP_PASSWORD }} \
+              -e MAIL_SMTP_AUTH=true \
+              -e MAIL_SMTP_STARTTLS=true \
+              -e MAIL_FROM=${{ secrets.MAIL_FROM_ADDRESS }} \
               $ECR_REGISTRY/wcfantasy-backend:latest
 
   deploy-frontend:

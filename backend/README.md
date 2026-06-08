@@ -100,6 +100,14 @@ Environment variables are passed as `-e` flags in the `docker run` command (see 
 | `JWT_SECRET` | Base64-encoded HMAC-SHA key (≥ 256 bits) — generate with `openssl rand -base64 32` |
 | `JWT_EXPIRATION_MS` | Token lifetime in ms (default `86400000` = 24 h) |
 | `APP_CORS_ALLOWED_ORIGINS` | CloudFront frontend URL, e.g. `https://xxxx.cloudfront.net` |
+| `FRONTEND_URL` | Same CloudFront URL — used in bracket-reminder email CTA link |
+| `MAIL_HOST` | SES SMTP endpoint, e.g. `email-smtp.us-east-1.amazonaws.com` |
+| `MAIL_PORT` | SMTP port (`587` for STARTTLS) |
+| `MAIL_USERNAME` | SES SMTP username (from SES → SMTP settings, **not** an IAM access key) |
+| `MAIL_PASSWORD` | SES SMTP password |
+| `MAIL_SMTP_AUTH` | `true` for SES |
+| `MAIL_SMTP_STARTTLS` | `true` for SES |
+| `MAIL_FROM_ADDRESS` | Verified sender address in SES, e.g. `noreply@yourdomain.com` |
 
 ---
 
@@ -502,6 +510,26 @@ Grafana Alloy scrapes the Prometheus endpoint every 15 s and ships to Grafana Cl
 In any profile other than `local`, `logback-spring.xml` writes every log line as a JSON object using `logstash-logback-encoder`. Docker captures stdout; Alloy ships the container logs to Grafana Loki. Query logs with `{job="worldcupapp"}` in Grafana Explore.
 
 In the `local` profile, logs are plain human-readable text with colour coding.
+
+### Email notifications
+
+`BracketReminderNotifier` is a `@Scheduled` component that polls the tournament status every 5 minutes (with a 1-minute initial delay on startup). When it detects that the group stage has ended and the bracket window is open (`!groupPicksOpen && bracketPicksOpen`), it emails every registered user a bracket-reminder with the Round of 32 deadline and a CTA link. The send is recorded in the `notification_log` table so it fires exactly once even across container restarts.
+
+| Environment | Mail transport | How to view emails |
+|-------------|----------------|-------------------|
+| `local` profile | Mailpit on `localhost:1025` | Open `http://localhost:8025` |
+| Production (AWS) | Amazon SES SMTP (`email-smtp.us-east-2.amazonaws.com:587`) | SES console / CloudWatch |
+
+**Starting Mailpit locally:**
+```bash
+docker run -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit
+```
+
+**Amazon SES setup (production):**
+1. Go to SES → Verified identities → verify your sender domain or email address
+2. Go to SES → SMTP settings → Create SMTP credentials — this generates a dedicated SMTP username/password (distinct from IAM access keys)
+3. If your SES account is still in sandbox mode, also verify every recipient address, or request production access to send to unverified addresses
+4. Add the six `MAIL_*` and `MAIL_FROM_ADDRESS` values as GitHub Actions secrets
 
 ### Frontend errors — Sentry
 

@@ -114,6 +114,12 @@
             <version>8.0</version>
         </dependency>
 
+        <!-- Spring Mail – JavaMailSender for bracket-reminder notifications -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
