@@ -17,6 +17,7 @@
     <marker id="arr-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e65100"/></marker>
     <marker id="arr-green"  viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2e7d32"/></marker>
     <marker id="arr-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ad1457"/></marker>
+    <marker id="arr-teal"   viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#00695c"/></marker>
   </defs>
 
   <!-- ══════════════════════════════════════════════════ TITLE -->
@@ -88,13 +89,20 @@
   <text x="66" y="614" font-size="8.5" fill="#888">Versioned tags (CI/CD push)</text>
 
   <!-- ── RDS: x=230, y=548, w=175, h=124, center(317,610), bottom=672 ── -->
-  <rect x="230" y="548" width="175" height="124" rx="8" fill="#e8eaf6" stroke="#3949ab" stroke-width="1.5"/>
+  <rect x="230" y="548" width="175" height="140" rx="8" fill="#e8eaf6" stroke="#3949ab" stroke-width="1.5"/>
   <text x="250" y="570" font-size="10.5" font-weight="700" fill="#283593">🗄  Amazon RDS</text>
   <text x="250" y="586" font-size="9" fill="#555">PostgreSQL 15</text>
   <text x="250" y="602" font-size="9" fill="#555">users · entries · picks</text>
   <text x="250" y="618" font-size="9" fill="#555">player_match_stats</text>
-  <text x="250" y="634" font-size="8.5" fill="#888">Flyway schema versioning</text>
-  <text x="250" y="648" font-size="8.5" fill="#888">Leaderboard aggregation</text>
+  <text x="250" y="634" font-size="8.5" fill="#888">notification_log</text>
+  <text x="250" y="650" font-size="8.5" fill="#888">Flyway schema versioning</text>
+  <text x="250" y="664" font-size="8.5" fill="#888">Leaderboard aggregation</text>
+
+  <!-- ── Amazon SES: x=46, y=700, w=172, h=56, bottom=756 ── -->
+  <rect x="46" y="700" width="172" height="56" rx="8" fill="#e0f2f1" stroke="#00695c" stroke-width="1.5"/>
+  <text x="66" y="720" font-size="10.5" font-weight="700" fill="#004d40">✉  Amazon SES</text>
+  <text x="66" y="736" font-size="9" fill="#555">Email delivery (SMTP :587)</text>
+  <text x="66" y="750" font-size="8.5" fill="#888">Bracket-reminder notifications</text>
 
   <!-- ══════════════════════════════════════════════════ GRAFANA CLOUD (external) -->
   <!-- x=22, y=780, w=250, h=80, bottom=860 -->
@@ -238,6 +246,13 @@
   <text x="424" y="646" font-size="8.5" fill="#2e7d32" text-anchor="start">metrics</text>
   <text x="424" y="658" font-size="8.5" fill="#2e7d32" text-anchor="start">+ logs</text>
 
+  <!-- 15. Spring Boot → SES (SMTP bracket-reminder) -->
+  <!-- Route: left from Spring Boot bottom → down left margin → right into SES left edge -->
+  <path d="M 90,398 L 40,398 L 40,728 L 46,728"
+        fill="none" stroke="#00695c" stroke-width="1.5" marker-end="url(#arr-teal)" stroke-dasharray="5,3"/>
+  <text x="28" y="548" font-size="8" fill="#00695c" text-anchor="middle">SMTP</text>
+  <text x="28" y="558" font-size="8" fill="#00695c" text-anchor="middle">:587</text>
+
   <!-- 14. Users / Browser → Sentry (JS errors) -->
   <!-- Route: right from Users → down right margin → left into Sentry right edge -->
   <path d="M 930,94 L 990,94 L 990,746 L 946,746"
@@ -261,6 +276,8 @@
   <text x="393" y="912" font-size="8.5" fill="#2e7d32">Grafana telemetry</text>
   <line x1="506" y1="908" x2="536" y2="908" stroke="#ad1457" stroke-width="1.5" stroke-dasharray="5,3"/>
   <text x="541" y="912" font-size="8.5" fill="#ad1457">Sentry errors</text>
+  <line x1="624" y1="908" x2="654" y2="908" stroke="#00695c" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="659" y="912" font-size="8.5" fill="#00695c">Email (SES)</text>
 </svg>
 </body>
 </html>

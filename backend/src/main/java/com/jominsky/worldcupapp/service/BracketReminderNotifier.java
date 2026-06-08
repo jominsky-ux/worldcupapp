@@ -65,7 +65,7 @@ public class BracketReminderNotifier {
         }
 
         String deadline = formatDeadline(status.roundOf32FirstGameTime());
-        List<User> users = userRepository.findAll();
+        List<User> users = userRepository.findAllWithEntries();
 
         log.info("Sending bracket reminder to {} users (deadline: {})", users.size(), deadline);
         for (User user : users) {

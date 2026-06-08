@@ -57,6 +57,9 @@ public class PlayerPointsService {
 
     private static final Pattern EVENT_ID_PATTERN = Pattern.compile("/events/(\\d+)");
 
+    // 2026 World Cup Final is July 19 — stop polling the day after.
+    private static final Instant TOURNAMENT_END = Instant.parse("2026-07-20T00:00:00Z");
+
     private final PlayerMatchStatsRepository repository;
     private final EspnApiClient espnApiClient;
     private final WorldCupDataProvider dataProvider;
@@ -73,6 +76,10 @@ public class PlayerPointsService {
 
     @Scheduled(fixedDelay = 5 * 60 * 1000)
     public void syncCompletedMatchStats() {
+        if (Instant.now().isAfter(TOURNAMENT_END)) {
+            log.debug("Tournament ended — player stats sync disabled");
+            return;
+        }
         try {
             Map<String, String> positionByAthleteId = buildPositionLookup();
             if (positionByAthleteId.isEmpty()) {

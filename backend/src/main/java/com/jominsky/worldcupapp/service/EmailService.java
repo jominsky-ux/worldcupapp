@@ -72,12 +72,11 @@ public class EmailService {
 
                   <p style="color:#444;font-size:14px;font-weight:600;margin-bottom:8px;">Bracket scoring</p>
                   <table style="width:100%%;border-collapse:collapse;font-size:13px;color:#555;margin-bottom:28px;">
-                    <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;">Round of 32</td>   <td style="text-align:right;color:#2e7d32;font-weight:600;">+1 pt per correct pick</td></tr>
-                    <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;">Round of 16</td>   <td style="text-align:right;color:#2e7d32;font-weight:600;">+2 pts per correct pick</td></tr>
-                    <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;">Quarterfinal</td>  <td style="text-align:right;color:#2e7d32;font-weight:600;">+4 pts per correct pick</td></tr>
-                    <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;">Semifinal</td>     <td style="text-align:right;color:#2e7d32;font-weight:600;">+8 pts per correct pick</td></tr>
-                    <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;">Final</td>         <td style="text-align:right;color:#2e7d32;font-weight:600;">+16 pts per correct pick</td></tr>
-                    <tr>                                       <td style="padding:7px 0;">Champion</td>      <td style="text-align:right;color:#c9a84c;font-weight:700;">+32 pts</td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;">Round of 32</td>   <td style="text-align:right;color:#2e7d32;font-weight:600;">+4 pts per correct pick</td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;">Round of 16</td>   <td style="text-align:right;color:#2e7d32;font-weight:600;">+8 pts per correct pick</td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;">Quarterfinal</td>  <td style="text-align:right;color:#2e7d32;font-weight:600;">+16 pts per correct pick</td></tr>
+                    <tr style="border-bottom:1px solid #eee;"><td style="padding:7px 0;">Semifinal</td>     <td style="text-align:right;color:#2e7d32;font-weight:600;">+32 pts per correct pick</td></tr>
+                    <tr>                                       <td style="padding:7px 0;">Final</td>         <td style="text-align:right;color:#c9a84c;font-weight:700;">+64 pts per correct pick</td></tr>
                   </table>
 
                   <div style="text-align:center;margin:32px 0 8px;">
