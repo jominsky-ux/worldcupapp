@@ -165,7 +165,21 @@ export default function BracketPage() {
   return (
     <PhaseGate
       allowedPhases={['PRE_KNOCKOUT', 'KNOCKOUT']}
-      lockedMessage="Bracket picks open once the group stage concludes. Check back after the group stage ends!"
+      lockedMessage={
+        <div className="space-y-3 text-sm max-w-lg mx-auto">
+          <p>
+            Bracket picks open once the group stage is complete. You will receive an email
+            once the group stage concludes and prior to the knockout stage beginning — follow
+            the link in that email to make your selections.
+          </p>
+          <p>
+            <strong>NOTE:</strong> The reminder email may end up in your spam folder. It is
+            advised to set a calendar reminder just in case, and to make your bracket picks
+            quickly — the window between the group stage and the start of the knockout stage
+            is very short.
+          </p>
+        </div>
+      }
     >
       <div className="space-y-6">
 

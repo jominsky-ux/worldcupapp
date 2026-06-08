@@ -26,9 +26,9 @@ export function PhaseGate({ allowedPhases, readOnlyPhases = [], readOnlyMessage,
     return (
       <div className="card border border-dashed border-gray-200 text-center py-12">
         <span className="text-4xl mb-3 block">🔒</span>
-        <p className="text-gray-500 font-body">
+        <div className="text-gray-500 font-body">
           {lockedMessage ?? 'This section is locked for the current phase of the tournament.'}
-        </p>
+        </div>
       </div>
     )
   }
