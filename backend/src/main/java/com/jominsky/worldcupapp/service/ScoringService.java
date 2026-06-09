@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
@@ -12,6 +13,7 @@ import com.jominsky.worldcupapp.dto.EntryScoreDto;
 import com.jominsky.worldcupapp.dto.GroupDto;
 import com.jominsky.worldcupapp.dto.LeaderboardEntryDto;
 import com.jominsky.worldcupapp.dto.StandingsGroupDto;
+import com.jominsky.worldcupapp.dto.TournamentStatusDto;
 import com.jominsky.worldcupapp.model.Entry;
 import com.jominsky.worldcupapp.model.GroupStagePick;
 import com.jominsky.worldcupapp.model.KnockoutPick;
@@ -65,8 +67,6 @@ public class ScoringService {
     private static final int TOTAL_THIRD_PLACE_PICKS = 8;
 
     // Knockout scoring keyed by ESPN event ID (2026 World Cup, matches 73-104).
-    // Points are awarded per pick made regardless of correctness until live result
-    // data is available from the ESPN events API.
     private static final Map<String, Integer> KNOCKOUT_POINTS = Map.ofEntries(
             // Round of 32 — ESPN matches 73-88 (+4 each)
             Map.entry("760486", 4), Map.entry("760489", 4), Map.entry("760488", 4), Map.entry("760487", 4),
@@ -82,6 +82,10 @@ public class ScoringService {
             Map.entry("760514", 32), Map.entry("760515", 32),
             // Final — ESPN match 104 (+64)
             Map.entry("760517", 64));
+
+    // ESPN phase strings that indicate knockout matches are being played.
+    private static final Set<String> KNOCKOUT_PHASES = Set.of(
+            "round-of-32", "round-of-16", "quarter", "semi", "final");
 
     private final WorldCupDataProvider dataProvider;
     private final UserRepository userRepository;
@@ -116,14 +120,15 @@ public class ScoringService {
      * descending. Users with no entries are excluded.
      */
     public List<LeaderboardEntryDto> getLeaderboard() {
+        TournamentStatusDto status = dataProvider.getTournamentStatus();
         Map<String, Integer> athletePoints = buildAthletePointsMap();
-        Map<String, GroupPositions> groupPositions = buildGroupPositionsMap();
+        Map<String, GroupPositions> groupPositions = buildGroupPositionsMap(status);
 
         List<Entry> allEntries = entryRepository.findAll();
         List<LeaderboardEntryDto> rows = new ArrayList<>();
 
         for (Entry entry : allEntries) {
-            EntryScoreDto score = scoreEntry(entry, groupPositions, athletePoints);
+            EntryScoreDto score = scoreEntry(entry, groupPositions, athletePoints, status);
             User user = entry.getUser();
             rows.add(new LeaderboardEntryDto(0, user.getDisplayName(), user.getEmail(),
                     entry.getEntryNumber(), entry.getName(), score.totalPoints()));
@@ -152,11 +157,12 @@ public class ScoringService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + email));
 
+        TournamentStatusDto status = dataProvider.getTournamentStatus();
         Map<String, Integer> athletePoints = buildAthletePointsMap();
-        Map<String, GroupPositions> groupPositions = buildGroupPositionsMap();
+        Map<String, GroupPositions> groupPositions = buildGroupPositionsMap(status);
 
         return entryRepository.findByUserOrderByEntryNumber(user).stream()
-                .map(entry -> scoreEntry(entry, groupPositions, athletePoints))
+                .map(entry -> scoreEntry(entry, groupPositions, athletePoints, status))
                 .toList();
     }
 
@@ -164,12 +170,13 @@ public class ScoringService {
 
     private EntryScoreDto scoreEntry(Entry entry,
             Map<String, GroupPositions> groupPositions,
-            Map<String, Integer> athletePoints) {
-        int groupPts = scoreGroupPicks(entry, groupPositions);
-        int thirdPts = scoreThirdPlacePicks(entry, groupPositions);
-        int bracketPts = scoreBracketPicks(entry);
-        int squadPts = scoreSquad(entry, athletePoints);
-        int total = groupPts + thirdPts + bracketPts + squadPts;
+            Map<String, Integer> athletePoints,
+            TournamentStatusDto status) {
+        int groupPts   = scoreGroupPicks(entry, groupPositions);
+        int thirdPts   = scoreThirdPlacePicks(entry, groupPositions);
+        int bracketPts = scoreBracketPicks(entry, status);
+        int squadPts   = scoreSquad(entry, athletePoints);
+        int total      = groupPts + thirdPts + bracketPts + squadPts;
 
         return new EntryScoreDto(entry.getId(), entry.getEntryNumber(), entry.getName(),
                 groupPts, thirdPts, bracketPts, squadPts, total);
@@ -225,7 +232,14 @@ public class ScoringService {
         return pts;
     }
 
-    private int scoreBracketPicks(Entry entry) {
+    private int scoreBracketPicks(Entry entry, TournamentStatusDto status) {
+        // Only score once knockout matches are actually being played.
+        // During PRE_TOURNAMENT and GROUP_STAGE no knockout games have occurred;
+        // during PRE_KNOCKOUT picks are open but no matches have started yet.
+        if (!KNOCKOUT_PHASES.contains(status.phase())) {
+            return 0;
+        }
+
         List<KnockoutPick> picks = knockoutPickRepository.findByEntry(entry);
         int pts = 0;
         for (KnockoutPick pick : picks) {
@@ -246,10 +260,14 @@ public class ScoringService {
 
     /**
      * Builds a map from groupId → {first, second, third} team IDs using live
-     * standings. Groups are cross-referenced with the groups endpoint to obtain
-     * the groupId (standings only carry a display name).
+     * standings. Returns an empty map before the tournament starts to prevent
+     * ESPN's pre-seeded team ordering from being treated as real results.
      */
-    private Map<String, GroupPositions> buildGroupPositionsMap() {
+    private Map<String, GroupPositions> buildGroupPositionsMap(TournamentStatusDto status) {
+        if (status.groupPicksOpen()) {
+            return Map.of();
+        }
+
         List<GroupDto> groups = dataProvider.getGroups();
         List<StandingsGroupDto> standings = dataProvider.getStandings();
 
