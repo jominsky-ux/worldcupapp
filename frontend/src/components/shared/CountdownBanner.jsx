@@ -53,7 +53,7 @@ export default function CountdownBanner() {
     const distance = formatDistanceToNow(groupDeadline, { addSuffix: true })
     message = `⏰ Group stage picks lock ${distance} — make sure your picks and squad picks are saved!`
     urgency = isBefore(groupDeadline, addHours(now, 6)) ? 'danger' : 'warning'
-  } else if (!tournament.groupPicksOpen && !isPast(bracketDeadline)) {
+  } else if (tournament.bracketPicksOpen && !isPast(bracketDeadline)) {
     if (isBefore(bracketDeadline, addHours(now, 48))) {
       const distance = formatDistanceToNow(bracketDeadline, { addSuffix: true })
       message = `⏰ Bracket picks lock ${distance} — submit your bracket picks!`
