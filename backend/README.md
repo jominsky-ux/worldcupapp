@@ -285,7 +285,19 @@ service/
                           dense-ranked global leaderboard (ties share same rank)
   PlayerPointsService     @Scheduled sync only — fetches completed-match stats from the
                           ESPN Core API every 5 min, calculates FPL-style points, and
-                          persists rows to player_match_stats; no query logic here
+                          persists rows to player_match_stats; no query logic here.
+                          Stops polling after 2026-07-20 (day after the Final).
+                          ESPN stat keys used: minutes, totalGoals, goalAssists,
+                          goalsConceded (clean sheet = 0 conceded), yellowCards,
+                          redCards, saves, defensiveInterventions, ownGoals.
+                          FPL-style scoring:
+                            Played ≥ 60 min: +2 | Played < 60 min: +1
+                            Goal (GK/DEF): +6 | (MID): +5 | (FWD): +4
+                            Assist: +3
+                            Clean sheet ≥ 60 min (GK/DEF): +4 | (MID): +1
+                            Saves per 3 (GK only): +1
+                            ≥ 10 defensive interventions (DEF/MID/FWD): +2
+                            Yellow card: -1 | Red card: -3 | Own goal: -2
 repository/               Spring Data JPA repositories for all entities
 model/
   User                    account – email, BCrypt hash, display name, role
@@ -339,6 +351,9 @@ db/migration/
   V6__add_squad_picks                     squad_picks table + formation column on entries
   V7__alter_entry_number_to_integer       entry_number widened from SMALLINT to INTEGER
   V8__add_player_match_stats              player_match_stats table for FPL-style scoring
+  V9__add_notification_log                notification_log table (bracket reminder dedup)
+  V10__add_defensive_interventions        defensive_interventions column on player_match_stats
+  V11__add_own_goals                      own_goals column on player_match_stats
 ```
 
 ### Caching
@@ -424,6 +439,8 @@ erDiagram
         int         yellow_cards
         int         red_cards
         int         saves
+        int         defensive_interventions
+        int         own_goals
         int         total_points
         timestamptz created_at       "not null"
     }

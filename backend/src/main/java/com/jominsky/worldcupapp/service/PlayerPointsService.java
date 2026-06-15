@@ -45,7 +45,10 @@ public class PlayerPointsService {
     private static final int PTS_CLEAN_SHEET_MID     =  1;
     private static final int PTS_YELLOW_CARD         = -1;
     private static final int PTS_RED_CARD            = -3;
-    private static final int PTS_SAVES_PER_3         =  1;
+    private static final int PTS_SAVES_PER_3                    =  1;
+    private static final int PTS_OWN_GOAL                       = -2;
+    private static final int PTS_DEFENSIVE_INTERVENTIONS        =  2;
+    private static final int DEFENSIVE_INTERVENTIONS_THRESHOLD  = 10;
 
     // Re-process a completed match for up to 3 hours after kickoff to pick up
     // any ESPN stat corrections; skip after that as the data is effectively final.
@@ -204,6 +207,8 @@ public class PlayerPointsService {
                     pms.setYellowCards(stats.getOrDefault("yellowCards", 0));
                     pms.setRedCards(stats.getOrDefault("redCards", 0));
                     pms.setSaves(stats.getOrDefault("saves", 0));
+                    pms.setDefensiveInterventions(stats.getOrDefault("defensiveInterventions", 0));
+                    pms.setOwnGoals(stats.getOrDefault("ownGoals", 0));
                     pms.setTotalPoints(calculatePoints(pms));
                     repository.save(pms);
                     saved++;
@@ -248,6 +253,12 @@ public class PlayerPointsService {
         if ("GK".equals(pos)) {
             pts += (s.getSaves() / 3) * PTS_SAVES_PER_3;
         }
+
+        if (!"GK".equals(pos) && s.getDefensiveInterventions() >= DEFENSIVE_INTERVENTIONS_THRESHOLD) {
+            pts += PTS_DEFENSIVE_INTERVENTIONS;
+        }
+
+        pts += s.getOwnGoals() * PTS_OWN_GOAL;
 
         return pts;
     }

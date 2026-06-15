@@ -158,10 +158,11 @@ The standalone `.mermaid` source lives at `src/component-tree.mermaid`.
 
 | Pick | Points |
 |------|--------|
-| Correct group winner (×12) | +5 pts each |
-| Correct group runner-up (×12) | +3 pts each |
-| All 24 correct bonus | +20 pts |
+| Correct group winner (×12) | +4 pts each |
+| Correct group runner-up (×12) | +2 pts each |
+| All 12 groups correct (both positions) | +20 pts bonus |
 | Correct 3rd-place qualifier (×8 picks) | +1 pt each |
+| All 8 3rd-place picks correct | +10 pts bonus |
 
 **3rd-place picks:** In 2026, the 8 best third-place finishers advance to the R32. Users pick 8 teams they think will be among those qualifiers. Only one team per group may be selected.
 
@@ -170,20 +171,33 @@ The standalone `.mermaid` source lives at `src/component-tree.mermaid`.
 - Pick **Formation first** (1 GK): 3-5-2, 3-4-3, 4-5-1, 4-4-2, 4-3-3, 5-4-1, 5-3-2, 5-2-3
 - Pick **11 players** based on formation selected
 - **Max 4 players from any one national team**
-- Players earn FPL-style points per match (goals, assists, clean sheets, etc.)
-- Pick **11 starters** each round in a valid formation (1 GK · 3–5 DEF · 2–5 MID · 1–3 FWD)
-- Auto-substitution applies if a starter does not play
+- Players earn FPL-style points per match:
+
+| Event | Points |
+|-------|--------|
+| Played ≥ 60 min | +2 |
+| Played < 60 min | +1 |
+| Goal scored (GK / DEF) | +6 |
+| Goal scored (MID) | +5 |
+| Goal scored (FWD) | +4 |
+| Assist | +3 |
+| Clean sheet ≥ 60 min (GK / DEF) | +4 |
+| Clean sheet ≥ 60 min (MID) | +1 |
+| Every 3 saves (GK only) | +1 |
+| ≥ 10 defensive interventions (DEF / MID / FWD) | +2 |
+| Yellow card | −1 |
+| Red card | −3 |
+| Own goal | −2 |
 
 ### Bracket picks (lock at R32 kickoff)
 
 | Round | Points per correct pick |
 |-------|------------------------|
-| Round of 32 | 1 pt |
-| Round of 16 | 2 pts |
-| Quarterfinal | 4 pts |
-| Semifinal | 8 pts |
-| Final | 16 pts |
-| Champion | 32 pts |
+| Round of 32 | +4 pts |
+| Round of 16 | +8 pts |
+| Quarterfinal | +16 pts |
+| Semifinal | +32 pts |
+| Final | +64 pts |
 
 ### Entries
 
