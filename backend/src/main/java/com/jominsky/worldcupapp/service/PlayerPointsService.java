@@ -92,7 +92,6 @@ public class PlayerPointsService {
                 String ref     = item.path("$ref").asText("");
                 String eventId = extractEventId(ref);
                 if (eventId.isEmpty()) continue;
-                if (repository.existsByEventId(eventId)) continue;
 
                 processEvent(eventId, positionByAthleteId);
             }
@@ -139,7 +138,9 @@ public class PlayerPointsService {
 
                 String position = positionLookup.getOrDefault(athleteId, "MID");
 
-                PlayerMatchStats pms = new PlayerMatchStats();
+                PlayerMatchStats pms = repository
+                        .findByAthleteIdAndEventId(athleteId, eventId)
+                        .orElse(new PlayerMatchStats());
                 pms.setAthleteId(athleteId);
                 pms.setEventId(eventId);
                 pms.setPosition(position);
