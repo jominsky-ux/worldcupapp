@@ -133,9 +133,9 @@ public class EspnApiClient {
     return get(seasonsUrl);
   }
 
-  /** Fetches all tournament events from the Core API (up to 200). */
+  /** Fetches all 2026 World Cup events from the season-specific Core API endpoint. */
   public JsonNode fetchCoreEvents() {
-    return get(coreBaseUrl + "/events?limit=200");
+    return get(seasonsUrl + "/events?limit=200");
   }
 
   /** Fetches competition data for an event, including competitor IDs and date. */
