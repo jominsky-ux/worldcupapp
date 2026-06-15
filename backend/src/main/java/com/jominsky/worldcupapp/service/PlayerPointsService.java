@@ -19,8 +19,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class PlayerPointsService {
@@ -62,8 +60,6 @@ public class PlayerPointsService {
             "Attacker",   "FWD"
     );
 
-    private static final Pattern EVENT_ID_PATTERN = Pattern.compile("/events/(\\d+)");
-
     // 2026 World Cup Final is July 19 — stop polling the day after.
     private static final Instant TOURNAMENT_END = Instant.parse("2026-07-20T00:00:00Z");
 
@@ -98,9 +94,8 @@ public class PlayerPointsService {
 
             JsonNode events = espnApiClient.fetchCoreEvents();
             int total = 0, processed = 0, skipped = 0;
-            for (JsonNode item : events.path("items")) {
-                String ref     = item.path("$ref").asText("");
-                String eventId = extractEventId(ref);
+            for (JsonNode item : events.path("events")) {
+                String eventId = item.path("id").asText("");
                 if (eventId.isEmpty()) continue;
                 total++;
                 if (processEvent(eventId, positionByAthleteId)) processed++;
@@ -283,8 +278,4 @@ public class PlayerPointsService {
         return map;
     }
 
-    private String extractEventId(String ref) {
-        Matcher m = EVENT_ID_PATTERN.matcher(ref);
-        return m.find() ? m.group(1) : "";
-    }
 }
