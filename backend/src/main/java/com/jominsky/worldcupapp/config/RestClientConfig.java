@@ -21,7 +21,7 @@ public class RestClientConfig {
     public RestClient restClient() {
         return RestClient.builder()
                 .defaultHeader("Accept", "application/json")
-                .defaultHeader("User-Agent", "WorldCupApp/1.0")
+                .defaultHeader("User-Agent", "Mozilla/5.0 (compatible; WorldCupApp/1.0)")
                 .build();
     }
 }

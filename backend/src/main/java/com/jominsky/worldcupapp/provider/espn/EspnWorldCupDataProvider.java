@@ -282,13 +282,18 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
 
         for (GroupDto group : groups) {
             for (TeamDto team : group.teams()) {
-                espnApiClient.fetchTeamAthletes(team).path("athletes").forEach(athleteNode -> {
-                    athletes.add(new AthleteDto(
-                            athleteNode.path("id").asText(""),
-                            athleteNode.path("displayName").asText(""),
-                            athleteNode.path("position").path("displayName").asText(""),
-                            team));
-                });
+                try {
+                    espnApiClient.fetchTeamAthletes(team).path("athletes").forEach(athleteNode -> {
+                        athletes.add(new AthleteDto(
+                                athleteNode.path("id").asText(""),
+                                athleteNode.path("displayName").asText(""),
+                                athleteNode.path("position").path("displayName").asText(""),
+                                team));
+                    });
+                } catch (Exception e) {
+                    log.warn("Could not fetch roster for team {} ({}) — skipping: {}",
+                            team.id(), team.name(), e.getMessage());
+                }
             }
         }
 
