@@ -187,13 +187,8 @@ public class PlayerPointsService {
                         continue;
                     }
 
-                    int minutes = stats.getOrDefault("minutesPlayed", 0);
-                    if (minutes == 0) {
-                        // Log available stat keys once to help diagnose name mismatches
-                        log.debug("Event {}, athlete {}: minutesPlayed=0 (available keys: {})",
-                                eventId, athleteId, stats.keySet());
-                        continue;
-                    }
+                    int minutes = stats.getOrDefault("minutes", 0);
+                    if (minutes == 0) continue; // did not appear
 
                     String position = positionLookup.getOrDefault(athleteId, "MID");
                     PlayerMatchStats pms = repository
@@ -203,9 +198,9 @@ public class PlayerPointsService {
                     pms.setEventId(eventId);
                     pms.setPosition(position);
                     pms.setMinutes(minutes);
-                    pms.setGoals(stats.getOrDefault("goals", 0));
-                    pms.setAssists(stats.getOrDefault("assists", 0));
-                    pms.setCleanSheet(stats.getOrDefault("cleanSheets", 0) > 0);
+                    pms.setGoals(stats.getOrDefault("totalGoals", 0));
+                    pms.setAssists(stats.getOrDefault("goalAssists", 0));
+                    pms.setCleanSheet(stats.getOrDefault("goalsConceded", 1) == 0);
                     pms.setYellowCards(stats.getOrDefault("yellowCards", 0));
                     pms.setRedCards(stats.getOrDefault("redCards", 0));
                     pms.setSaves(stats.getOrDefault("saves", 0));
