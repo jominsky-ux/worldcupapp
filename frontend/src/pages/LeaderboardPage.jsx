@@ -15,19 +15,23 @@
  * The logged-in user's rows are highlighted so they can quickly
  * find themselves in the table.
  *
- * TODO (when backend is ready):
- *   - Replace mock data with real /api/leaderboard endpoint
+ * Clicking an entry name opens EntryDetailModal with that entry's
+ * points breakdown and squad roster.
+ *
+ * TODO:
  *   - Add pagination for large leagues
  *   - Add "My Rank" sticky header showing user's own position
  */
 
+import { useState } from 'react'
 import { useLeaderboard } from '../hooks/useGameData'
 import { useAuth } from '../context/AuthContext'
-import { LoadingSpinner } from '../components/shared/SharedComponents'
+import { LoadingSpinner, EntryDetailModal } from '../components/shared/SharedComponents'
 
 export default function LeaderboardPage() {
   const { data: leaderboard = [], isLoading } = useLeaderboard()
   const { user } = useAuth()
+  const [viewEntryId, setViewEntryId] = useState(null)
 
   if (isLoading) return <LoadingSpinner size="lg" label="Loading leaderboard…" />
 
@@ -85,9 +89,12 @@ export default function LeaderboardPage() {
                         <span className="badge bg-gold/15 text-gold-dark text-xs">You</span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-400 font-body">
+                    <button
+                      onClick={() => setViewEntryId(row.entryId)}
+                      className="text-xs text-gray-400 font-body hover:text-brand hover:underline"
+                    >
                       {row.entryName}
-                    </p>
+                    </button>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span className="tabular-nums font-semibold text-xl text-brand">
@@ -109,6 +116,8 @@ export default function LeaderboardPage() {
           </tbody>
         </table>
       </div>
+
+      <EntryDetailModal entryId={viewEntryId} onClose={() => setViewEntryId(null)} />
     </div>
   )
 }

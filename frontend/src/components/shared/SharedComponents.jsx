@@ -272,6 +272,107 @@ export function PlayerMatchStatsModal({ player, onClose }) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
+ * src/components/shared/EntryDetailModal.jsx — Per-Entry Score Breakdown
+ * =========================================================================
+ * Shown when a user clicks an entry name on the leaderboard. Displays the
+ * group-stage points, 3rd-place points, bracket points, and squad roster
+ * (name, position, points) ordered by position for that entry.
+ *
+ * PROPS:
+ *   entryId — UUID of the entry to show; modal is hidden when null
+ *   onClose — function called when the user dismisses the modal
+ */
+
+import { useEntryDetail } from '../../hooks/useGameData'
+
+export function EntryDetailModal({ entryId, onClose }) {
+  const { data: detail, isLoading } = useEntryDetail(entryId)
+
+  if (!entryId) return null
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
+      onClick={onClose}
+    >
+      <div
+        className="card max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="font-body font-semibold text-xl text-brand">
+              {detail?.name ?? 'Entry'}
+            </h2>
+            <p className="text-sm text-gray-400 font-body">Points breakdown</p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        {isLoading ? (
+          <LoadingSpinner label="Loading entry…" />
+        ) : !detail ? (
+          <p className="text-gray-400 font-body text-center py-8">Entry not found.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="rounded-xl bg-surface-secondary p-4 text-center">
+                <p className="text-2xl font-semibold tabular-nums text-brand">{detail.groupPoints}</p>
+                <p className="text-xs text-gray-400 font-body mt-1">Group Stage</p>
+              </div>
+              <div className="rounded-xl bg-surface-secondary p-4 text-center">
+                <p className="text-2xl font-semibold tabular-nums text-brand">{detail.thirdPlacePoints}</p>
+                <p className="text-xs text-gray-400 font-body mt-1">3rd Place</p>
+              </div>
+              <div className="rounded-xl bg-surface-secondary p-4 text-center">
+                <p className="text-2xl font-semibold tabular-nums text-brand">{detail.bracketPoints}</p>
+                <p className="text-xs text-gray-400 font-body mt-1">Bracket</p>
+              </div>
+            </div>
+
+            <h3 className="font-body font-semibold text-sm text-brand mb-2">
+              Squad — {detail.squadPoints} pts
+            </h3>
+            {detail.squad.length === 0 ? (
+              <p className="text-gray-400 font-body text-center py-6">No squad picks yet.</p>
+            ) : (
+              <table className="w-full text-sm font-body">
+                <thead>
+                  <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
+                    <th className="py-2 pr-3">Player</th>
+                    <th className="py-2 pr-3">Pos</th>
+                    <th className="py-2 pr-3 text-right">Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.squad.map((p) => (
+                    <tr key={p.athleteId} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2 pr-3 text-brand font-medium">{p.name}</td>
+                      <td className="py-2 pr-3 text-gray-500">{p.position}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums font-semibold text-brand">
+                        {p.totalPoints}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
  * src/components/shared/TeamBadge.jsx — Team Flag + Name Display
  * ===============================================================
  * Small reusable component showing a country flag emoji and name.

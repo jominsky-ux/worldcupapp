@@ -19,8 +19,10 @@ The main data-fetching file. All hooks below call the Spring Boot backend via th
 | `useTournamentInfo()` | `GET /api/tournament/status` | Layout, PhaseGate | Refreshes every 1 min |
 | `usePlayers(filters)` | `GET /api/teams/athletes` | SquadPage | Filtered client-side; all callers share one request |
 | `usePlayerPoints()` | `GET /api/players/points` | SquadPage | Returns a `Map<athleteId, totalPoints>`; refreshes every 5 min |
+| `usePlayerMatchHistory(athleteId)` | `GET /api/players/{athleteId}/matches` | PlayerMatchStatsModal | Per-game stats, most recent first; disabled when no `athleteId` |
 | `useLeaderboard()` | `GET /api/leaderboard` | LeaderboardPage | One row per entry, dense-ranked; refreshes every 2 min |
-| `useSaveGroupPicks(entryId)` | *(mock delay — no backend call yet)* | GroupStagePage | Pending backend mutation endpoint |
+| `useEntryDetail(entryId)` | `GET /api/leaderboard/entries/{entryId}` | EntryDetailModal | Points breakdown + squad roster for one entry; disabled when no `entryId` |
+| `useSaveGroupPicks(entryId)` | *(mock delay — no backend call yet)* | Unused | Dead code — `GroupStagePage` actually saves group picks via `EntryContext.saveGroupPick()`, which is wired to `PUT /api/entries/{id}/picks/groups` |
 
 ## How React Query works
 

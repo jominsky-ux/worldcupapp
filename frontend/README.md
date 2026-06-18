@@ -111,6 +111,7 @@ flowchart TD
 
     LEADER --> SCORE_TABLE["ScoreTable"]
     SCORE_TABLE --> RANK_ROW["RankRow\n× N users"]
+    RANK_ROW --> ENTRY_MODAL["EntryDetailModal\ngroup/3rd/bracket/squad breakdown\nsquad ordered by position"]
 
     subgraph SHARED["Shared components  —  used across pages"]
         direction LR
@@ -119,6 +120,7 @@ flowchart TD
         TB["TeamBadge\nFlag emoji + name"]
         PC["PlayerCard"]
         PMSM["PlayerMatchStatsModal"]
+        EDM["EntryDetailModal"]
         LS["LoadingSpinner\nsm · md · lg"]
     end
 
@@ -137,16 +139,17 @@ flowchart TD
         H5["useSaveGroupPicks()"]
         H6["usePlayerPoints()"]
         H7["usePlayerMatchHistory(athleteId)"]
+        H8["useEntryDetail(entryId)"]
     end
 
     subgraph MOCKS["src/mocks/  —  still used by mocked hooks"]
         direction LR
         M1["teams.js\n48 teams · 12 groups"]
         M2["players.js\n~40 players · FPL stats"]
-        M3["entries.js\nscoring constants\nMAX_THIRD_PLACE_PICKS=8\nMAX_PLAYERS_PER_TEAM=4\nMOCK_LEADERBOARD"]
+        M3["entries.js\nscoring constants\nMAX_THIRD_PLACE_PICKS=8\nMAX_PLAYERS_PER_TEAM=4"]
     end
 
-    HOOKS -->|"queryFn (mock — leaderboard only)"| MOCKS
+    HOOKS -->|"queryFn (mock — saveGroupPicks only)"| MOCKS
     CONTEXT -.->|"useAuth()\nuseEntry()"| OUTLET
     SHARED -.->|"imported by pages"| OUTLET
 ```
@@ -209,6 +212,10 @@ Clicking **View stats** on any player in your squad opens a per-game breakdown (
 - Each user may create **up to 3 independent entries**
 - Each entry has its own group picks, squad, and bracket — they score separately
 
+### Leaderboard
+
+Clicking an entry name on the leaderboard opens `EntryDetailModal`, showing that entry's group-stage points, 3rd-place points, bracket points, and full squad (name, position, points) ordered GK → DEF → MID → FWD. This works for any entry, not just the logged-in user's own — the leaderboard and its per-entry detail are both public, unauthenticated endpoints.
+
 ---
 
 ## Mock data vs real API
@@ -225,12 +232,13 @@ Most hooks in `src/hooks/useGameData.js` are now wired to the live Spring Boot b
 | `usePlayers(filters)` | `GET /api/teams/athletes` |
 | `usePlayerPoints()` | `GET /api/players/points` |
 | `usePlayerMatchHistory(athleteId)` | `GET /api/players/{athleteId}/matches` |
+| `useLeaderboard()` | `GET /api/leaderboard` |
+| `useEntryDetail(entryId)` | `GET /api/leaderboard/entries/{entryId}` |
 
 The following hooks still return mock data until their backend endpoints are built:
 
 | Hook | Status |
 |------|--------|
-| `useLeaderboard()` | Returns `MOCK_LEADERBOARD` from `src/mocks/entries.js` |
 | `useSaveGroupPicks()` | Simulates a save; backend mutation not yet wired |
 
 ---

@@ -287,6 +287,7 @@ export function useLeaderboard() {
           rank: row.rank,
           username: row.displayName,
           email: row.email,
+          entryId: row.entryId,
           entryNumber: row.entryNumber,
           entryName: row.entryName,
           totalPoints: row.totalPoints,
@@ -294,6 +295,21 @@ export function useLeaderboard() {
       ),
     staleTime: 1000 * 60 * 2,
     refetchInterval: 1000 * 60 * 2,
+  })
+}
+
+/**
+ * useEntryDetail — fetches the points breakdown and squad roster for a
+ * single entry, for the leaderboard's "view entry" modal.
+ * Source: GET /api/leaderboard/entries/{entryId} (publicly accessible)
+ */
+export function useEntryDetail(entryId) {
+  return useQuery({
+    queryKey: ['entryDetail', entryId],
+    queryFn: () =>
+      apiClient.get(`/api/leaderboard/entries/${entryId}`).then((res) => res.data),
+    enabled: !!entryId,
+    staleTime: 1000 * 60 * 2,
   })
 }
 

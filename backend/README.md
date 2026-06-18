@@ -146,6 +146,7 @@ All endpoints are prefixed with `/api`.
 | `GET` | `/api/players/points` | Total fantasy points per athlete (aggregated from `player_match_stats`) |
 | `GET` | `/api/players/{athleteId}/matches` | Per-game fantasy stats for one athlete, most recent first, with opponent name/abbreviation resolved |
 | `GET` | `/api/leaderboard` | All entries ranked by total fantasy points (one row per entry) |
+| `GET` | `/api/leaderboard/entries/{entryId}` | Points breakdown (group/3rd-place/bracket/squad) and squad roster for one entry, ordered by position |
 
 ### Protected – `Authorization: Bearer <token>` required
 
@@ -276,14 +277,18 @@ controller/
   TournamentController    GET /api/tournament/status
   TeamsController         GET /api/teams/athletes
   PlayerPointsController  GET /api/players/points, /api/players/{id}/matches (delegates to WorldCupDataProvider)
-  LeaderboardController   GET /api/leaderboard (public), GET /api/entries/scores (auth)
+  LeaderboardController   GET /api/leaderboard (public), GET /api/leaderboard/entries/{id} (public),
+                          GET /api/entries/scores (auth)
 service/
   UserService             registration, login, password hashing
   EntryService            entry CRUD, ownership verification, max-3 enforcement
   PickService             group/third-place/knockout/squad pick upserts
   ScoringService          scores every entry (group +4/+2/+20, 3rd-place +1/+10,
                           knockout points by ESPN event ID, squad sum); produces the
-                          dense-ranked global leaderboard (ties share same rank)
+                          dense-ranked global leaderboard (ties share same rank);
+                          getEntryDetail(entryId) returns the full breakdown plus
+                          squad roster (name/position/points) ordered GK→DEF→MID→FWD
+                          for the leaderboard's per-entry detail modal
   PlayerPointsService     @Scheduled sync only — fetches completed-match stats from the
                           ESPN Core API every 5 min, calculates FPL-style points, and
                           persists rows to player_match_stats; no query logic here.
@@ -313,7 +318,10 @@ dto/                      immutable Java records for all request and response bo
   PlayerPointsDto         athleteId, totalPoints (aggregated across all matches)
   EntryScoreDto           entryId, entryNumber, name, groupPoints, thirdPlacePoints,
                           bracketPoints, squadPoints, totalPoints
-  LeaderboardEntryDto     rank, displayName, email, entryNumber, entryName, totalPoints
+  EntryDetailDto          entryId, entryNumber, name, groupPoints, thirdPlacePoints,
+                          bracketPoints, squadPoints, totalPoints, squad (List<SquadPlayerScoreDto>)
+  SquadPlayerScoreDto     athleteId, name, position, totalPoints
+  LeaderboardEntryDto     rank, displayName, email, entryId, entryNumber, entryName, totalPoints
 security/
   JwtUtil                 token generation and validation (JJWT 0.12, HS512)
   JwtAuthenticationFilter stateless JWT request filter
@@ -489,6 +497,7 @@ The React frontend (`frontend/`) connects to this backend via a shared axios ins
 | `usePlayerPoints()` | `GET /api/players/points` |
 | `usePlayerMatchHistory(athleteId)` | `GET /api/players/{athleteId}/matches` |
 | `useLeaderboard()` | `GET /api/leaderboard` |
+| `useEntryDetail(entryId)` | `GET /api/leaderboard/entries/{entryId}` |
 | `AuthContext.login()` | `POST /api/auth/login` |
 | `AuthContext.register()` | `POST /api/auth/register` |
 | `EntryContext` (load) | `GET /api/entries` + `GET /api/entries/{id}/picks` + `GET /api/entries/scores` |

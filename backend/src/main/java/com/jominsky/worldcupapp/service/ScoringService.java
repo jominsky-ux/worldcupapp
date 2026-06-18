@@ -6,12 +6,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.jominsky.worldcupapp.dto.AthleteDto;
+import com.jominsky.worldcupapp.dto.EntryDetailDto;
 import com.jominsky.worldcupapp.dto.EntryScoreDto;
 import com.jominsky.worldcupapp.dto.GroupDto;
 import com.jominsky.worldcupapp.dto.LeaderboardEntryDto;
+import com.jominsky.worldcupapp.dto.SquadPlayerScoreDto;
 import com.jominsky.worldcupapp.dto.StandingsGroupDto;
 import com.jominsky.worldcupapp.dto.TournamentStatusDto;
 import com.jominsky.worldcupapp.model.Entry;
@@ -87,6 +91,10 @@ public class ScoringService {
     private static final Set<String> KNOCKOUT_PHASES = Set.of(
             "round-of-32", "round-of-16", "quarter", "semi", "final");
 
+    // Squad display order in the entry detail modal.
+    private static final Map<String, Integer> POSITION_ORDER = Map.of(
+            "GK", 0, "DEF", 1, "MID", 2, "FWD", 3);
+
     private final WorldCupDataProvider dataProvider;
     private final UserRepository userRepository;
     private final EntryRepository entryRepository;
@@ -131,7 +139,7 @@ public class ScoringService {
             EntryScoreDto score = scoreEntry(entry, groupPositions, athletePoints, status);
             User user = entry.getUser();
             rows.add(new LeaderboardEntryDto(0, user.getDisplayName(), user.getEmail(),
-                    entry.getEntryNumber(), entry.getName(), score.totalPoints()));
+                    entry.getId(), entry.getEntryNumber(), entry.getName(), score.totalPoints()));
         }
 
         rows.sort(Comparator.comparingInt(LeaderboardEntryDto::totalPoints).reversed());
@@ -145,9 +153,42 @@ public class ScoringService {
                 prevPoints = r.totalPoints();
             }
             ranked.add(new LeaderboardEntryDto(rank, r.displayName(), r.email(),
-                    r.entryNumber(), r.entryName(), r.totalPoints()));
+                    r.entryId(), r.entryNumber(), r.entryName(), r.totalPoints()));
         }
         return ranked;
+    }
+
+    /**
+     * Computes the full points breakdown and squad roster for a single entry.
+     * Publicly accessible — backs the leaderboard's per-entry detail modal.
+     */
+    public EntryDetailDto getEntryDetail(UUID entryId) {
+        Entry entry = entryRepository.findById(entryId)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + entryId));
+
+        TournamentStatusDto status = dataProvider.getTournamentStatus();
+        Map<String, Integer> athletePoints = buildAthletePointsMap();
+        Map<String, GroupPositions> groupPositions = buildGroupPositionsMap(status);
+        EntryScoreDto score = scoreEntry(entry, groupPositions, athletePoints, status);
+
+        Map<String, AthleteDto> athletesById = new HashMap<>();
+        for (AthleteDto a : dataProvider.getAllTeamAthletes()) {
+            athletesById.put(a.id(), a);
+        }
+
+        List<SquadPlayerScoreDto> squad = squadPickRepository.findByEntry(entry).stream()
+                .map(p -> {
+                    AthleteDto athlete = athletesById.get(p.getAthleteId());
+                    String name = athlete != null ? athlete.name() : p.getAthleteId();
+                    int pts = athletePoints.getOrDefault(p.getAthleteId(), 0);
+                    return new SquadPlayerScoreDto(p.getAthleteId(), name, p.getPosition(), pts);
+                })
+                .sorted(Comparator.comparingInt(s -> POSITION_ORDER.getOrDefault(s.position(), 99)))
+                .toList();
+
+        return new EntryDetailDto(entry.getId(), entry.getEntryNumber(), entry.getName(),
+                score.groupPoints(), score.thirdPlacePoints(), score.bracketPoints(),
+                score.squadPoints(), score.totalPoints(), squad);
     }
 
     /**
