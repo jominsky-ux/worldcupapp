@@ -140,8 +140,12 @@ public class PlayerPointsService {
 
             // Skip matches older than REPROCESS_WINDOW_HOURS if stats already exist —
             // ESPN data is effectively final by then and re-fetching wastes API quota.
+            // Exception: rows written before opponentTeamId/matchDate existed (V12) are
+            // missing those columns — reprocess once more to backfill them.
             Instant reprocessCutoff = matchStart.plus(REPROCESS_WINDOW_HOURS, ChronoUnit.HOURS);
-            if (Instant.now().isAfter(reprocessCutoff) && repository.existsByEventId(eventId)) {
+            if (Instant.now().isAfter(reprocessCutoff)
+                    && repository.existsByEventId(eventId)
+                    && !repository.existsByEventIdAndOpponentTeamIdIsNull(eventId)) {
                 return false;
             }
 

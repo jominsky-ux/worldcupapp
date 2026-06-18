@@ -13,6 +13,8 @@ public interface PlayerMatchStatsRepository extends JpaRepository<PlayerMatchSta
 
     boolean existsByEventId(String eventId);
 
+    boolean existsByEventIdAndOpponentTeamIdIsNull(String eventId);
+
     java.util.Optional<PlayerMatchStats> findByAthleteIdAndEventId(String athleteId, String eventId);
 
     List<PlayerMatchStats> findByAthleteIdOrderByMatchDateDesc(String athleteId);
