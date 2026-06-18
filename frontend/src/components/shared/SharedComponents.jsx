@@ -84,10 +84,13 @@ export function LoadingSpinner({ size = 'md', label = 'Loading...' }) {
  * club, and current FPL points total.
  *
  * PROPS:
- *   player   — player object from mocks/players.js
- *   selected — boolean, true if this player is in the user's squad
- *   onToggle — function called when user clicks to add/remove player
- *   disabled — boolean, true if squad position limit is reached
+ *   player      — player object from mocks/players.js
+ *   selected    — boolean, true if this player is in the user's squad
+ *   onToggle    — function called when user clicks to add/remove player
+ *   disabled    — boolean, true if squad position limit is reached
+ *   onViewStats — optional function called when the user clicks the
+ *                 per-game stats button; when provided and the player is
+ *                 selected, a small stats button is shown on the card
  *
  * POSITION COLORS:
  * Each position has a distinct color to help users quickly scan
@@ -96,7 +99,7 @@ export function LoadingSpinner({ size = 'md', label = 'Loading...' }) {
 
 import { POSITION_CONFIG } from '../../mocks/players'
 
-export function PlayerCard({ player, selected = false, onToggle, disabled = false }) {
+export function PlayerCard({ player, selected = false, onToggle, disabled = false, onViewStats }) {
   const posConfig = POSITION_CONFIG[player.position]
 
   return (
@@ -134,14 +137,135 @@ export function PlayerCard({ player, selected = false, onToggle, disabled = fals
         </div>
       </div>
 
-      {/* Selection indicator */}
+      {/* Selection indicator + stats button */}
       {selected && (
-        <div className="mt-2 flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-gold inline-block" />
-          <span className="text-xs text-gold font-body font-medium">In squad</span>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-gold inline-block" />
+            <span className="text-xs text-gold font-body font-medium">In squad</span>
+          </div>
+          {onViewStats && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation()
+                onViewStats(player)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  onViewStats(player)
+                }
+              }}
+              className="text-xs font-body font-medium text-gray-400 hover:text-brand underline"
+            >
+              View stats
+            </span>
+          )}
         </div>
       )}
     </button>
+  )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * src/components/shared/PlayerMatchStatsModal.jsx — Per-Game Stats Table
+ * =========================================================================
+ * Shown when a user clicks "View stats" on a squad player. Displays one row
+ * per completed match the player has appeared in, with opponent/date context
+ * plus the full FPL stat breakdown for that match.
+ *
+ * PROPS:
+ *   player  — player object (must have `id` and `name`); modal is hidden when null
+ *   onClose — function called when the user dismisses the modal
+ */
+
+import { usePlayerMatchHistory } from '../../hooks/useGameData'
+
+export function PlayerMatchStatsModal({ player, onClose }) {
+  const { data: matches = [], isLoading } = usePlayerMatchHistory(player?.id)
+
+  if (!player) return null
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
+      onClick={onClose}
+    >
+      <div
+        className="card max-w-4xl w-full max-h-[80vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="font-body font-semibold text-xl text-brand">{player.name}</h2>
+            <p className="text-sm text-gray-400 font-body">{player.teamCode} · Match-by-match stats</p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        {isLoading ? (
+          <LoadingSpinner label="Loading match history…" />
+        ) : matches.length === 0 ? (
+          <p className="text-gray-400 font-body text-center py-8">
+            No completed matches recorded yet.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm font-body">
+              <thead>
+                <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
+                  <th className="py-2 pr-3">Opponent</th>
+                  <th className="py-2 pr-3">Date</th>
+                  <th className="py-2 pr-3 text-right">Pts</th>
+                  <th className="py-2 pr-3 text-right">Min</th>
+                  <th className="py-2 pr-3 text-right">G</th>
+                  <th className="py-2 pr-3 text-right">A</th>
+                  <th className="py-2 pr-3 text-right">DC</th>
+                  <th className="py-2 pr-3 text-right">CS</th>
+                  <th className="py-2 pr-3 text-right">Sv</th>
+                  <th className="py-2 pr-3 text-right">OG</th>
+                  <th className="py-2 pr-3 text-right">YC</th>
+                  <th className="py-2 pr-3 text-right">RC</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matches.map((m) => (
+                  <tr key={m.eventId} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2 pr-3 text-brand font-medium whitespace-nowrap">
+                      {m.opponentName || 'TBD'}
+                    </td>
+                    <td className="py-2 pr-3 text-gray-500 whitespace-nowrap">
+                      {m.matchDate ? new Date(m.matchDate).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums font-semibold text-brand">{m.totalPoints}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{m.minutes}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{m.goals}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{m.assists}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{m.defensiveInterventions}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{m.cleanSheet ? '✓' : ''}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{m.saves}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{m.ownGoals}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{m.yellowCards}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{m.redCards}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

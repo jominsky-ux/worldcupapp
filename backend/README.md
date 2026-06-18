@@ -144,6 +144,7 @@ All endpoints are prefixed with `/api`.
 | `GET` | `/api/tournament/status` | Current phase, live-match flag, next match date |
 | `GET` | `/api/teams/athletes` | All athletes for every tournament team |
 | `GET` | `/api/players/points` | Total fantasy points per athlete (aggregated from `player_match_stats`) |
+| `GET` | `/api/players/{athleteId}/matches` | Per-game fantasy stats for one athlete, most recent first, with opponent name/abbreviation resolved |
 | `GET` | `/api/leaderboard` | All entries ranked by total fantasy points (one row per entry) |
 
 ### Protected – `Authorization: Bearer <token>` required
@@ -274,7 +275,7 @@ controller/
   MatchController         GET /api/matches, /api/matches/{id}/summary
   TournamentController    GET /api/tournament/status
   TeamsController         GET /api/teams/athletes
-  PlayerPointsController  GET /api/players/points (delegates to WorldCupDataProvider)
+  PlayerPointsController  GET /api/players/points, /api/players/{id}/matches (delegates to WorldCupDataProvider)
   LeaderboardController   GET /api/leaderboard (public), GET /api/entries/scores (auth)
 service/
   UserService             registration, login, password hashing
@@ -341,6 +342,8 @@ provider/
   espn/EspnWorldCupDataProvider  ESPN JSON → domain DTOs; @Primary implementation
                           getAllTeamAthletes() – iterates all groups/teams, returns List<AthleteDto>
                           getAllAthletePoints() – reads aggregated totals from PlayerMatchStatsRepository
+                          getAthleteMatchHistory(athleteId) – per-game stats for one athlete, with
+                          opponent name/abbreviation resolved from getGroups()
                           (PlayerPointsService writes the rows; this provider only reads them)
 db/migration/
   V1__create_users_table                  users table
@@ -354,6 +357,7 @@ db/migration/
   V9__add_notification_log                notification_log table (bracket reminder dedup)
   V10__add_defensive_interventions        defensive_interventions column on player_match_stats
   V11__add_own_goals                      own_goals column on player_match_stats
+  V12__add_opponent_and_match_date        opponent_team_id + match_date columns on player_match_stats
 ```
 
 ### Caching
@@ -431,6 +435,8 @@ erDiagram
         uuid        id           PK
         varchar50   athlete_id       "ESPN athlete ID, not null"
         varchar50   event_id         "ESPN event ID, not null"
+        varchar50   opponent_team_id "ESPN team ID of the opponent"
+        timestamptz match_date       "kickoff time"
         varchar3    position         "GK | DEF | MID | FWD"
         int         minutes
         int         goals
@@ -481,6 +487,7 @@ The React frontend (`frontend/`) connects to this backend via a shared axios ins
 | `useTournamentInfo()` | `GET /api/tournament/status` |
 | `usePlayers()` | `GET /api/teams/athletes` |
 | `usePlayerPoints()` | `GET /api/players/points` |
+| `usePlayerMatchHistory(athleteId)` | `GET /api/players/{athleteId}/matches` |
 | `useLeaderboard()` | `GET /api/leaderboard` |
 | `AuthContext.login()` | `POST /api/auth/login` |
 | `AuthContext.register()` | `POST /api/auth/register` |

@@ -15,8 +15,10 @@ import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -124,6 +126,14 @@ public class MockDataSeeder implements CommandLineRunner {
     private static final int[] MID_OFFSETS = {0,  3,  7, 12, 15};
     private static final int[] FWD_OFFSETS = {0,  3,  5,  7,  9};
 
+    // ── Match dates for the 3 mock group-stage fixtures ──────────────────────
+    // Index 0 = "mock-evt-1" (matchday 1), index 1 = "mock-evt-2", etc.
+    private static final Instant[] MOCK_EVENT_DATES = {
+            Instant.parse("2026-06-11T20:00:00Z"),
+            Instant.parse("2026-06-17T16:00:00Z"),
+            Instant.parse("2026-06-23T20:00:00Z"),
+    };
+
     // ── User plan: {displayName prefix, entryCount, squadOffset, pickProfile} ─
     // pickProfile: 0=SHARP, 1=AVERAGE, 2=WILD
     private static final Object[][] USER_PLAN = {
@@ -153,6 +163,12 @@ public class MockDataSeeder implements CommandLineRunner {
 
     @Value("${app.mock.data-mode:NONE}")
     private String dataModeRaw;
+
+    // Populated at the start of run() so seedPlayerMatchStats/saveStats can
+    // resolve a plausible opponent team without threading two extra
+    // parameters through every one of the ~30 saveStats() call sites.
+    private Map<String, TeamDto> teamByAthleteId;
+    private List<TeamDto> allTeams;
 
     public MockDataSeeder(
             UserRepository userRepository,
@@ -210,6 +226,13 @@ public class MockDataSeeder implements CommandLineRunner {
             log.warn("MockDataSeeder: ESPN returned no athletes — squad picks will be skipped. " +
                      "Check connectivity or retry after the backend is fully started.");
         }
+
+        teamByAthleteId = new HashMap<>();
+        for (AthleteDto a : allAthletes) {
+            if (a.team() != null) teamByAthleteId.put(a.id(), a.team());
+        }
+        allTeams = new ArrayList<>();
+        for (GroupDto group : groups) allTeams.addAll(group.teams());
 
         log.info("MockDataSeeder: seeding {} mock data ({} groups, {} athletes from ESPN)...",
                 mode, groups.size(), allAthletes.size());
@@ -452,9 +475,12 @@ public class MockDataSeeder implements CommandLineRunner {
     private void saveStats(String athleteId, String position, String eventId,
                            int minutes, int goals, int assists, boolean cleanSheet,
                            int yellowCards, int redCards, int saves) {
+        int matchNumber = parseMockMatchNumber(eventId);
         PlayerMatchStats s = new PlayerMatchStats();
         s.setAthleteId(athleteId);
         s.setEventId(eventId + "-" + athleteId);
+        s.setOpponentTeamId(resolveMockOpponentTeamId(athleteId, matchNumber));
+        s.setMatchDate(MOCK_EVENT_DATES[matchNumber - 1]);
         s.setPosition(position);
         s.setMinutes(minutes);
         s.setGoals(goals);
@@ -465,6 +491,26 @@ public class MockDataSeeder implements CommandLineRunner {
         s.setSaves(saves);
         s.setTotalPoints(calcPoints(s));
         playerMatchStatsRepository.save(s);
+    }
+
+    /** Extracts the trailing digit from "mock-evt-N" (1-based). */
+    private static int parseMockMatchNumber(String eventBase) {
+        return Integer.parseInt(eventBase.substring(eventBase.lastIndexOf('-') + 1));
+    }
+
+    /**
+     * Picks a different real ESPN team as the "opponent" for this mock match,
+     * varying by matchday so the same player doesn't face the same team three
+     * times. Purely cosmetic — there is no real fixture behind these mock rows.
+     */
+    private String resolveMockOpponentTeamId(String athleteId, int matchNumber) {
+        TeamDto ownTeam = teamByAthleteId.get(athleteId);
+        if (ownTeam == null || allTeams.isEmpty()) return "";
+
+        int ownIdx = allTeams.indexOf(ownTeam);
+        int oppIdx = (ownIdx + matchNumber) % allTeams.size();
+        if (oppIdx == ownIdx) oppIdx = (oppIdx + 1) % allTeams.size();
+        return allTeams.get(oppIdx).id();
     }
 
     private int calcPoints(PlayerMatchStats s) {

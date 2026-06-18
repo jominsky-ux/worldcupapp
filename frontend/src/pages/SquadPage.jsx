@@ -26,7 +26,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { usePlayers, usePlayerPoints } from '../hooks/useGameData'
 import { useEntry } from '../context/EntryContext'
-import { PhaseGate, LoadingSpinner, PlayerCard } from '../components/shared/SharedComponents'
+import { PhaseGate, LoadingSpinner, PlayerCard, PlayerMatchStatsModal } from '../components/shared/SharedComponents'
 import { SQUAD_RULES, FORMATIONS } from '../mocks/entries'
 import { POSITION_CONFIG } from '../mocks/players'
 
@@ -38,6 +38,7 @@ export default function SquadPage() {
   const [selectedTeam, setSelectedTeam] = useState('')
   const [search, setSearch] = useState('')
   const [showSelected, setShowSelected] = useState(false)
+  const [viewStatsPlayer, setViewStatsPlayer] = useState(null)
   const { entries, activeEntry, activeEntryId, setActiveEntryId, saveFormation, saveSquadPick, phase } = useEntry()
   const isReadOnly = phase === 'GROUP_STAGE' || phase === 'KNOCKOUT'
   const [saving, setSaving] = useState(false)
@@ -493,6 +494,7 @@ export default function SquadPage() {
                       selected={squadIds.has(player.id)}
                       onToggle={isReadOnly ? undefined : handleToggle}
                       disabled={isReadOnly ? false : isPlayerDisabled(player)}
+                      onViewStats={setViewStatsPlayer}
                     />
                   ))}
                   {displayedPlayers.length === 0 && (
@@ -506,6 +508,8 @@ export default function SquadPage() {
           </>
         )}
       </div>
+
+      <PlayerMatchStatsModal player={viewStatsPlayer} onClose={() => setViewStatsPlayer(null)} />
     </PhaseGate>
   )
 }

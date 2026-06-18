@@ -15,6 +15,8 @@ public interface PlayerMatchStatsRepository extends JpaRepository<PlayerMatchSta
 
     java.util.Optional<PlayerMatchStats> findByAthleteIdAndEventId(String athleteId, String eventId);
 
+    List<PlayerMatchStats> findByAthleteIdOrderByMatchDateDesc(String athleteId);
+
     @Query("SELECT p.athleteId, SUM(p.totalPoints) FROM PlayerMatchStats p GROUP BY p.athleteId")
     List<Object[]> sumPointsByAthlete();
 }

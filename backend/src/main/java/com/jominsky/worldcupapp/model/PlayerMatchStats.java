@@ -27,6 +27,9 @@ public class PlayerMatchStats {
     @Column(nullable = false)
     private String eventId;
 
+    private String opponentTeamId;
+    private Instant matchDate;
+
     @Column(nullable = false, length = 3)
     private String position;
 
@@ -52,6 +55,10 @@ public class PlayerMatchStats {
     public void setAthleteId(String athleteId) { this.athleteId = athleteId; }
     public String getEventId() { return eventId; }
     public void setEventId(String eventId) { this.eventId = eventId; }
+    public String getOpponentTeamId() { return opponentTeamId; }
+    public void setOpponentTeamId(String opponentTeamId) { this.opponentTeamId = opponentTeamId; }
+    public Instant getMatchDate() { return matchDate; }
+    public void setMatchDate(Instant matchDate) { this.matchDate = matchDate; }
     public String getPosition() { return position; }
     public void setPosition(String position) { this.position = position; }
     public int getMinutes() { return minutes; }

@@ -17,6 +17,7 @@ import com.jominsky.worldcupapp.dto.AthleteDto;
 import com.jominsky.worldcupapp.dto.GroupDto;
 import com.jominsky.worldcupapp.dto.MatchDto;
 import com.jominsky.worldcupapp.dto.MatchSummaryDto;
+import com.jominsky.worldcupapp.dto.PlayerMatchGameStatsDto;
 import com.jominsky.worldcupapp.dto.PlayerPointsDto;
 import com.jominsky.worldcupapp.dto.ScoreboardDto;
 import com.jominsky.worldcupapp.dto.ScoringEventDto;
@@ -24,6 +25,7 @@ import com.jominsky.worldcupapp.dto.StandingsGroupDto;
 import com.jominsky.worldcupapp.dto.TeamDto;
 import com.jominsky.worldcupapp.dto.TeamStandingDto;
 import com.jominsky.worldcupapp.dto.TournamentStatusDto;
+import com.jominsky.worldcupapp.model.PlayerMatchStats;
 import com.jominsky.worldcupapp.provider.WorldCupDataProvider;
 import com.jominsky.worldcupapp.repository.PlayerMatchStatsRepository;
 
@@ -306,6 +308,49 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
         List<PlayerPointsDto> result = new ArrayList<>(rows.size());
         for (Object[] row : rows) {
             result.add(new PlayerPointsDto((String) row[0], ((Number) row[1]).intValue()));
+        }
+        return result;
+    }
+
+    /**
+     * Returns per-game fantasy stats for one athlete, resolving each match's
+     * opponent team name/abbreviation from the current group data.
+     *
+     * @param athleteId the ESPN athlete identifier
+     * @return per-game stats, most recent first; empty list if none recorded
+     */
+    @Override
+    public List<PlayerMatchGameStatsDto> getAthleteMatchHistory(String athleteId) {
+        List<PlayerMatchStats> rows = statsRepository.findByAthleteIdOrderByMatchDateDesc(athleteId);
+        if (rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, TeamDto> teamsById = new HashMap<>();
+        for (GroupDto group : getGroups()) {
+            for (TeamDto team : group.teams()) {
+                teamsById.put(team.id(), team);
+            }
+        }
+
+        List<PlayerMatchGameStatsDto> result = new ArrayList<>(rows.size());
+        for (PlayerMatchStats s : rows) {
+            TeamDto opponent = teamsById.get(s.getOpponentTeamId());
+            result.add(new PlayerMatchGameStatsDto(
+                    s.getEventId(),
+                    opponent != null ? opponent.name() : "",
+                    opponent != null ? opponent.abbreviation() : "",
+                    s.getMatchDate(),
+                    s.getTotalPoints(),
+                    s.getMinutes(),
+                    s.getGoals(),
+                    s.getAssists(),
+                    s.getDefensiveInterventions(),
+                    s.isCleanSheet(),
+                    s.getSaves(),
+                    s.getOwnGoals(),
+                    s.getYellowCards(),
+                    s.getRedCards()));
         }
         return result;
     }

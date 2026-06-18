@@ -3,6 +3,7 @@ package com.jominsky.worldcupapp.provider;
 import com.jominsky.worldcupapp.dto.AthleteDto;
 import com.jominsky.worldcupapp.dto.GroupDto;
 import com.jominsky.worldcupapp.dto.MatchSummaryDto;
+import com.jominsky.worldcupapp.dto.PlayerMatchGameStatsDto;
 import com.jominsky.worldcupapp.dto.PlayerPointsDto;
 import com.jominsky.worldcupapp.dto.ScoreboardDto;
 import com.jominsky.worldcupapp.dto.StandingsGroupDto;
@@ -87,4 +88,13 @@ public interface WorldCupDataProvider {
      * @return list of (athleteId, totalPoints) pairs; empty list if no data yet
      */
     List<PlayerPointsDto> getAllAthletePoints();
+
+    /**
+     * Returns per-game fantasy stats for one athlete across every completed
+     * match they appeared in, most recent first, with opponent context resolved.
+     *
+     * @param athleteId the provider-specific athlete identifier
+     * @return list of per-game stats; empty list if the athlete has no recorded matches
+     */
+    List<PlayerMatchGameStatsDto> getAthleteMatchHistory(String athleteId);
 }

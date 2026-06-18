@@ -16,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -144,12 +145,19 @@ public class PlayerPointsService {
                 return false;
             }
 
-            log.info("Event {}: processing player stats (kickoff {})", eventId, dateText);
-            int saved = 0;
+            List<String> competitorIds = new ArrayList<>();
             for (JsonNode competitor : competition.path("competitors")) {
                 String teamId = competitor.path("id").asText("");
-                if (teamId.isEmpty()) continue;
-                saved += processTeam(eventId, teamId, positionLookup);
+                if (!teamId.isEmpty()) competitorIds.add(teamId);
+            }
+
+            log.info("Event {}: processing player stats (kickoff {})", eventId, dateText);
+            int saved = 0;
+            for (String teamId : competitorIds) {
+                String opponentTeamId = competitorIds.stream()
+                        .filter(id -> !id.equals(teamId))
+                        .findFirst().orElse("");
+                saved += processTeam(eventId, teamId, opponentTeamId, matchStart, positionLookup);
             }
             log.info("Event {}: wrote/updated {} player stat records", eventId, saved);
             return true;
@@ -161,7 +169,8 @@ public class PlayerPointsService {
     }
 
     /** Returns the number of player stat records saved/updated for this team. */
-    private int processTeam(String eventId, String teamId, Map<String, String> positionLookup) {
+    private int processTeam(String eventId, String teamId, String opponentTeamId, Instant matchStart,
+            Map<String, String> positionLookup) {
         int saved = 0;
         try {
             JsonNode roster = espnApiClient.fetchCoreCompetitorRoster(eventId, teamId);
@@ -194,6 +203,8 @@ public class PlayerPointsService {
                             .orElse(new PlayerMatchStats());
                     pms.setAthleteId(athleteId);
                     pms.setEventId(eventId);
+                    pms.setOpponentTeamId(opponentTeamId);
+                    pms.setMatchDate(matchStart);
                     pms.setPosition(position);
                     pms.setMinutes(minutes);
                     pms.setGoals(stats.getOrDefault("totalGoals", 0));

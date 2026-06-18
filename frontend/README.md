@@ -107,6 +107,7 @@ flowchart TD
 
     SQUAD --> SQUAD_BUILDER["Player grid\nPosition filter · Search\n4-per-team limit"]
     SQUAD_BUILDER --> PLAYER_CARD["PlayerCard\nselected · disabled states"]
+    PLAYER_CARD --> STATS_MODAL["PlayerMatchStatsModal\nper-game table · opponent + date"]
 
     LEADER --> SCORE_TABLE["ScoreTable"]
     SCORE_TABLE --> RANK_ROW["RankRow\n× N users"]
@@ -117,6 +118,7 @@ flowchart TD
         PG["PhaseGate\nLock by tournament phase"]
         TB["TeamBadge\nFlag emoji + name"]
         PC["PlayerCard"]
+        PMSM["PlayerMatchStatsModal"]
         LS["LoadingSpinner\nsm · md · lg"]
     end
 
@@ -134,6 +136,7 @@ flowchart TD
         H4["useTournamentInfo()"]
         H5["useSaveGroupPicks()"]
         H6["usePlayerPoints()"]
+        H7["usePlayerMatchHistory(athleteId)"]
     end
 
     subgraph MOCKS["src/mocks/  —  still used by mocked hooks"]
@@ -189,6 +192,8 @@ The standalone `.mermaid` source lives at `src/component-tree.mermaid`.
 | Red card | −3 |
 | Own goal | −2 |
 
+Clicking **View stats** on any player in your squad opens a per-game breakdown (`PlayerMatchStatsModal`) showing opponent, match date, and the full stat line above for every completed match.
+
 ### Bracket picks (lock at R32 kickoff)
 
 | Round | Points per correct pick |
@@ -219,6 +224,7 @@ Most hooks in `src/hooks/useGameData.js` are now wired to the live Spring Boot b
 | `useTournamentInfo()` | `GET /api/tournament/status` |
 | `usePlayers(filters)` | `GET /api/teams/athletes` |
 | `usePlayerPoints()` | `GET /api/players/points` |
+| `usePlayerMatchHistory(athleteId)` | `GET /api/players/{athleteId}/matches` |
 
 The following hooks still return mock data until their backend endpoints are built:
 

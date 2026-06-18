@@ -64,7 +64,7 @@ The frontend communicates with the backend over a JSON REST API secured with JWT
 | Tournament data | `GET /api/groups`, `/api/standings`, `/api/matches`, `/api/tournament/status` |
 | Entries | `GET/POST /api/entries`, `GET /api/entries/{id}/picks` |
 | Picks | `PUT /api/entries/{id}/picks/groups`, `.../third-place`, `.../knockout` |
-| Players | `GET /api/teams/athletes`, `GET /api/players/points` |
+| Players | `GET /api/teams/athletes`, `GET /api/players/points`, `GET /api/players/{athleteId}/matches` |
 
 ### Quick start
 

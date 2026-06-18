@@ -247,6 +247,29 @@ export function usePlayerPoints() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// PLAYER MATCH HISTORY — LIVE
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * usePlayerMatchHistory — fetches per-game fantasy stats for one athlete.
+ * Source: GET /api/players/{athleteId}/matches (player_match_stats table,
+ * with opponent name/abbreviation resolved on the backend)
+ * Disabled when no athleteId is provided.
+ *
+ * @param {string|null} athleteId
+ */
+export function usePlayerMatchHistory(athleteId) {
+  return useQuery({
+    queryKey: ['playerMatchHistory', athleteId],
+    queryFn: () =>
+      apiClient.get(`/api/players/${athleteId}/matches`).then((res) => res.data),
+    enabled: !!athleteId,
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 5,
+  })
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // LEADERBOARD — LIVE
 // ══════════════════════════════════════════════════════════════════════════
 
