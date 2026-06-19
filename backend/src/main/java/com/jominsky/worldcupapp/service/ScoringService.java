@@ -175,13 +175,18 @@ public class ScoringService {
         for (AthleteDto a : dataProvider.getAllTeamAthletes()) {
             athletesById.put(a.id(), a);
         }
+        Map<String, Integer> gamesPlayedByAthlete = buildGamesPlayedMap();
 
         List<SquadPlayerScoreDto> squad = squadPickRepository.findByEntry(entry).stream()
                 .map(p -> {
                     AthleteDto athlete = athletesById.get(p.getAthleteId());
                     String name = athlete != null ? athlete.name() : p.getAthleteId();
+                    String teamAbbreviation = athlete != null && athlete.team() != null
+                            ? athlete.team().abbreviation() : "";
                     int pts = athletePoints.getOrDefault(p.getAthleteId(), 0);
-                    return new SquadPlayerScoreDto(p.getAthleteId(), name, p.getPosition(), pts);
+                    int gamesPlayed = gamesPlayedByAthlete.getOrDefault(p.getAthleteId(), 0);
+                    return new SquadPlayerScoreDto(p.getAthleteId(), name, p.getPosition(),
+                            teamAbbreviation, gamesPlayed, pts);
                 })
                 .sorted(Comparator.comparingInt(s -> POSITION_ORDER.getOrDefault(s.position(), 99)))
                 .toList();
@@ -335,6 +340,18 @@ public class ScoringService {
      */
     private Map<String, Integer> buildAthletePointsMap() {
         List<Object[]> rows = statsRepository.sumPointsByAthlete();
+        Map<String, Integer> map = new HashMap<>(rows.size() * 2);
+        for (Object[] row : rows) {
+            map.put((String) row[0], ((Number) row[1]).intValue());
+        }
+        return map;
+    }
+
+    /**
+     * Builds a map from athleteId → number of completed matches with recorded stats.
+     */
+    private Map<String, Integer> buildGamesPlayedMap() {
+        List<Object[]> rows = statsRepository.countMatchesByAthlete();
         Map<String, Integer> map = new HashMap<>(rows.size() * 2);
         for (Object[] row : rows) {
             map.put((String) row[0], ((Number) row[1]).intValue());

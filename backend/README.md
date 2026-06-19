@@ -146,7 +146,7 @@ All endpoints are prefixed with `/api`.
 | `GET` | `/api/players/points` | Total fantasy points per athlete (aggregated from `player_match_stats`) |
 | `GET` | `/api/players/{athleteId}/matches` | Per-game fantasy stats for one athlete, most recent first, with opponent name/abbreviation resolved |
 | `GET` | `/api/leaderboard` | All entries ranked by total fantasy points (one row per entry) |
-| `GET` | `/api/leaderboard/entries/{entryId}` | Points breakdown (group/3rd-place/bracket/squad) and squad roster for one entry, ordered by position |
+| `GET` | `/api/leaderboard/entries/{entryId}` | Points breakdown (group/3rd-place/bracket/squad) and squad roster (name, team, position, games played, points) for one entry, ordered by position |
 
 ### Protected – `Authorization: Bearer <token>` required
 
@@ -305,6 +305,9 @@ service/
                             ≥ 10 defensive interventions (DEF/MID/FWD): +2
                             Yellow card: -1 | Red card: -3 | Own goal: -2
 repository/               Spring Data JPA repositories for all entities
+  PlayerMatchStatsRepository  sumPointsByAthlete() / countMatchesByAthlete() — grouped
+                          aggregate queries used by ScoringService for squad points and
+                          games-played counts
 model/
   User                    account – email, BCrypt hash, display name, role
   Entry                   one bracket per entry (up to 3 per user)
@@ -320,7 +323,7 @@ dto/                      immutable Java records for all request and response bo
                           bracketPoints, squadPoints, totalPoints
   EntryDetailDto          entryId, entryNumber, name, groupPoints, thirdPlacePoints,
                           bracketPoints, squadPoints, totalPoints, squad (List<SquadPlayerScoreDto>)
-  SquadPlayerScoreDto     athleteId, name, position, totalPoints
+  SquadPlayerScoreDto     athleteId, name, position, teamAbbreviation, gamesPlayed, totalPoints
   LeaderboardEntryDto     rank, displayName, email, entryId, entryNumber, entryName, totalPoints
 security/
   JwtUtil                 token generation and validation (JJWT 0.12, HS512)

@@ -21,4 +21,7 @@ public interface PlayerMatchStatsRepository extends JpaRepository<PlayerMatchSta
 
     @Query("SELECT p.athleteId, SUM(p.totalPoints) FROM PlayerMatchStats p GROUP BY p.athleteId")
     List<Object[]> sumPointsByAthlete();
+
+    @Query("SELECT p.athleteId, COUNT(p) FROM PlayerMatchStats p GROUP BY p.athleteId")
+    List<Object[]> countMatchesByAthlete();
 }

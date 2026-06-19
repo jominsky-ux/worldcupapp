@@ -214,7 +214,7 @@ Clicking **View stats** on any player in your squad opens a per-game breakdown (
 
 ### Leaderboard
 
-Clicking an entry name on the leaderboard opens `EntryDetailModal`, showing that entry's group-stage points, 3rd-place points, bracket points, and full squad (name, position, points) ordered GK → DEF → MID → FWD. This works for any entry, not just the logged-in user's own — the leaderboard and its per-entry detail are both public, unauthenticated endpoints.
+Clicking an entry name on the leaderboard opens `EntryDetailModal`, showing that entry's group-stage points, 3rd-place points, bracket points, and full squad (name, team abbreviation, position, games played, points) ordered GK → DEF → MID → FWD. This works for any entry, not just the logged-in user's own — the leaderboard and its per-entry detail are both public, unauthenticated endpoints.
 
 ---
 
