@@ -346,8 +346,6 @@ export function EntryDetailModal({ entryId, onClose }) {
                 <thead>
                   <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
                     <th className="py-2 pr-3">Player</th>
-                    <th className="py-2 pr-3">Team</th>
-                    <th className="py-2 pr-3">Pos</th>
                     <th className="py-2 pr-3 text-right">GP</th>
                     <th className="py-2 pr-3 text-right">Pts</th>
                   </tr>
@@ -355,9 +353,12 @@ export function EntryDetailModal({ entryId, onClose }) {
                 <tbody>
                   {detail.squad.map((p) => (
                     <tr key={p.athleteId} className="border-b border-gray-50 last:border-0">
-                      <td className="py-2 pr-3 text-brand font-medium">{p.name}</td>
-                      <td className="py-2 pr-3 text-gray-500">{p.teamAbbreviation || '—'}</td>
-                      <td className="py-2 pr-3 text-gray-500">{p.position}</td>
+                      <td className="py-2 pr-3">
+                        <span className="text-brand font-medium">{p.name}</span>
+                        <span className="text-xs text-gray-400 ml-1.5">
+                          {p.teamAbbreviation || '—'} · {p.position}
+                        </span>
+                      </td>
                       <td className="py-2 pr-3 text-right tabular-nums">{p.gamesPlayed}</td>
                       <td className="py-2 pr-3 text-right tabular-nums font-semibold text-brand">
                         {p.totalPoints}
