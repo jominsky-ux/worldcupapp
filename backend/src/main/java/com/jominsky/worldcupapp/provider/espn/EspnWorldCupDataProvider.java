@@ -3,6 +3,7 @@ package com.jominsky.worldcupapp.provider.espn;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -125,7 +126,6 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
             for (JsonNode child : root.path("children")) {
                 String groupName = child.path("name").asText("Unknown Group");
                 List<TeamStandingDto> teamStandings = new ArrayList<>();
-                int position = 1;
 
                 for (JsonNode entry : child.path("standings").path("entries")) {
                     TeamDto team = mapTeam(entry.path("team"));
@@ -134,8 +134,9 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
                     int gf = stats.getOrDefault("pointsFor", 0);
                     int ga = stats.getOrDefault("pointsAgainst", 0);
 
+                    // position is reassigned below once teams are ranked; 0 is a placeholder.
                     teamStandings.add(new TeamStandingDto(
-                            position++,
+                            0,
                             team,
                             stats.getOrDefault("gamesPlayed", 0),
                             stats.getOrDefault("wins", 0),
@@ -146,7 +147,23 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
                             gf - ga,
                             stats.getOrDefault("points", 0)));
                 }
-                standings.add(new StandingsGroupDto(groupName, teamStandings));
+
+                // ESPN's "entries" array is not guaranteed to be rank-ordered, so the
+                // group table is ranked here by points, then goal difference, then
+                // goals scored (standard tournament tiebreakers).
+                teamStandings.sort(
+                        Comparator.comparingInt(TeamStandingDto::points).reversed()
+                                .thenComparing(Comparator.comparingInt(TeamStandingDto::goalDifference).reversed())
+                                .thenComparing(Comparator.comparingInt(TeamStandingDto::goalsFor).reversed()));
+
+                List<TeamStandingDto> ranked = new ArrayList<>(teamStandings.size());
+                int position = 1;
+                for (TeamStandingDto ts : teamStandings) {
+                    ranked.add(new TeamStandingDto(position++, ts.team(), ts.played(), ts.wins(),
+                            ts.draws(), ts.losses(), ts.goalsFor(), ts.goalsAgainst(),
+                            ts.goalDifference(), ts.points()));
+                }
+                standings.add(new StandingsGroupDto(groupName, ranked));
             }
             return standings;
 

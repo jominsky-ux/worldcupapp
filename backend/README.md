@@ -88,7 +88,7 @@ Flyway runs automatically on startup and applies any pending migrations from `sr
 
 The backend runs as a Docker container on an EC2 t3.micro instance. Nginx on the same instance proxies port 80 → `127.0.0.1:8080`. A dedicated CloudFront distribution with an HTTP origin points at the EC2 public DNS name, providing free HTTPS at `*.cloudfront.net` without a custom domain or ACM certificate.
 
-`deploy-backend` only runs when a push to `main` touches `backend/**` (or the workflow file itself) — see [`.github/workflows/deploy.yaml`](../.github/workflows/deploy.yaml). Frontend-only changes don't trigger a backend rebuild/redeploy.
+`deploy-backend` only runs when a push to `main` touches `backend/**` (or the workflow file itself), excluding `backend/README.md` — see [`.github/workflows/deploy.yaml`](../.github/workflows/deploy.yaml). Frontend-only and docs-only changes don't trigger a backend rebuild/redeploy.
 
 Environment variables are passed as `-e` flags in the `docker run` command (see `.github/workflows/deploy.yaml`):
 

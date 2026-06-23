@@ -43,7 +43,9 @@ npm run build
 ```
 Output goes to `dist/`. Deploy this folder to AWS S3 + CloudFront.
 
-In CI, `deploy-frontend` (see [`.github/workflows/deploy.yaml`](../.github/workflows/deploy.yaml)) only runs when a push to `main` touches `frontend/**` (or the workflow file itself) — backend-only changes don't trigger a rebuild/redeploy of the frontend.
+In CI, `deploy-frontend` (see [`.github/workflows/deploy.yaml`](../.github/workflows/deploy.yaml)) only runs when a push to `main` touches `frontend/**` (or the workflow file itself), excluding `frontend/README.md` — backend-only and docs-only changes don't trigger a rebuild/redeploy of the frontend.
+
+**SPA routing in production:** since this is a client-side-routed app (React Router) served as static files from S3 via CloudFront, the CloudFront distribution (`E2N04CWD7X7GAY`) has a custom error response mapping HTTP 404 → `/index.html` (response code 200). Without this, directly navigating to or refreshing a route like `/group-stage` or `/squad` would hit S3 (the origin is the S3 *website* endpoint, which 404s on missing keys) before React Router ever loads, and the browser would see a raw 404 instead of the app. This is a one-time CloudFront distribution setting — it isn't managed by any file in this repo and won't be reset by future deploys (`deploy-frontend` only syncs `dist/` to S3 and invalidates the cache; it doesn't touch distribution config).
 
 ---
 
