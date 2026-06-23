@@ -43,6 +43,8 @@ npm run build
 ```
 Output goes to `dist/`. Deploy this folder to AWS S3 + CloudFront.
 
+In CI, `deploy-frontend` (see [`.github/workflows/deploy.yaml`](../.github/workflows/deploy.yaml)) only runs when a push to `main` touches `frontend/**` (or the workflow file itself) — backend-only changes don't trigger a rebuild/redeploy of the frontend.
+
 ---
 
 ## Project structure

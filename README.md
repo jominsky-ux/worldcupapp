@@ -34,7 +34,7 @@ The frontend communicates with the backend over a JSON REST API secured with JWT
                                                    rosters         (@Scheduled, 5 min)
 ```
 
-**Production infrastructure:** EC2 t3.micro running Docker + Nginx (HTTP → Spring Boot). CloudFront serves the React build from S3 and reverse-proxies `/api/*` to EC2, providing free HTTPS via `*.cloudfront.net`. GitHub Actions builds the Docker image, pushes to Amazon ECR, deploys via SSH to EC2, and uploads the React build to S3.
+**Production infrastructure:** EC2 t3.micro running Docker + Nginx (HTTP → Spring Boot). CloudFront serves the React build from S3 and reverse-proxies `/api/*` to EC2, providing free HTTPS via `*.cloudfront.net`. GitHub Actions builds the Docker image, pushes to Amazon ECR, deploys via SSH to EC2, and uploads the React build to S3. The backend and frontend deploy jobs each run independently and are gated by [`dorny/paths-filter`](https://github.com/dorny/paths-filter) — a push to `main` only redeploys the component(s) whose files actually changed (`backend/**` or `frontend/**`).
 
 ---
 

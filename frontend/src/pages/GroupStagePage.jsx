@@ -136,21 +136,39 @@ export default function GroupStagePage() {
   const standingsByGroupId = useMemo(() => {
     if (phase === 'PRE_TOURNAMENT') return new Map()
     if (!standings.length || !groups.length) return new Map()
-    const nameToPos = new Map()
+    const nameToStandings = new Map()
     for (const sg of standings) {
-      nameToPos.set(sg.groupName, {
-        first:  sg.teams[0]?.team?.id ?? null,
-        second: sg.teams[1]?.team?.id ?? null,
-        third:  sg.teams[2]?.team?.id ?? null,
-      })
+      nameToStandings.set(sg.groupName, sg.teams)
     }
     const map = new Map()
     for (const group of groups) {
-      const pos = nameToPos.get(group.name)
-      if (pos) map.set(group.id, pos)
+      const teams = nameToStandings.get(group.name)
+      if (!teams) continue
+      map.set(group.id, {
+        first:  teams[0]?.team?.id ?? null,
+        second: teams[1]?.team?.id ?? null,
+        third:  teams[2]?.team?.id ?? null,
+        // Full rank order (1st → 4th) used to sort the team rows by points.
+        order:  teams.map((t) => t.team.id),
+      })
     }
     return map
   }, [standings, groups, phase])
+
+  // ── Derived: groups with teams re-sorted into live standings order ────────
+  // Falls back to the raw (unordered) group.teams list before the tournament
+  // starts, when there's no standings data to sort by yet.
+  const orderedGroups = useMemo(() => {
+    if (!standingsByGroupId.size) return groups
+    return groups.map((group) => {
+      const order = standingsByGroupId.get(group.id)?.order
+      if (!order) return group
+      return {
+        ...group,
+        teams: [...group.teams].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id)),
+      }
+    })
+  }, [groups, standingsByGroupId])
 
   // ── Derived: points earned totals for tab labels ───────────────────────────
   const earnedGroupPts = useMemo(() => {
@@ -371,7 +389,7 @@ export default function GroupStagePage() {
         {/* ── Group picks grid ── */}
         {activeTab === 'groups' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {groups.map((group) => (
+            {orderedGroups.map((group) => (
               <GroupCard
                 key={group.id}
                 group={group}
@@ -387,7 +405,7 @@ export default function GroupStagePage() {
         {/* ── Third place picks panel ── */}
         {activeTab === 'third' && (
           <ThirdPlacePanel
-            groups={groups}
+            groups={orderedGroups}
             groupPicksState={groupPicksState}
             topTwoPickedIds={topTwoPickedIds}
             selectedIds={thirdPlaceTeamIds}
