@@ -23,7 +23,7 @@
 import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
 import { useEntry } from '../context/EntryContext'
 import { PhaseGate } from '../components/shared/SharedComponents'
-import { MOCK_R32_MATCHUPS, ROUND_ORDER, ROUND_LABELS, ROUND_MATCHUP_IDS, MATCHUP_ROUND_KEY, MOCK_KNOCKOUT_RESULTS } from '../mocks/bracket'
+import { ROUND_ORDER, ROUND_LABELS, ROUND_MATCHUP_IDS, MATCHUP_ROUND_KEY, MOCK_KNOCKOUT_RESULTS } from '../mocks/bracket'
 import { BRACKET_POINTS_PER_ROUND } from '../mocks/entries'
 import { useBracketMatchups } from '../hooks/useGameData'
 
@@ -79,8 +79,8 @@ export default function BracketPage() {
   const isReadOnly = phase === 'KNOCKOUT'
   const results = isReadOnly ? MOCK_KNOCKOUT_RESULTS : {}
 
-  const { data: liveMatchups } = useBracketMatchups()
-  const r32Matchups = liveMatchups ?? MOCK_R32_MATCHUPS
+  const { data: liveMatchups, isLoading: matchupsLoading } = useBracketMatchups()
+  const r32Matchups = liveMatchups ?? []
 
   const teamLookup = useMemo(() => buildTeamLookup(r32Matchups), [r32Matchups])
 
@@ -258,6 +258,11 @@ export default function BracketPage() {
         </div>
 
         {/* ── Bracket tree ── */}
+        {matchupsLoading && (
+          <div className="text-center py-8 text-gray-400 font-body text-sm">
+            Loading bracket matchups…
+          </div>
+        )}
         <div className="overflow-x-auto -mx-4 px-4">
           <div className="flex gap-3 min-w-max pb-6">
             {ROUND_ORDER.map((round, roundIdx) => {

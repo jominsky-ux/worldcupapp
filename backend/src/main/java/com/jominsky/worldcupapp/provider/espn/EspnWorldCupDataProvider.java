@@ -291,13 +291,13 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
     // Private mapping helpers
     // -------------------------------------------------------------------------
 
-    // R32 ESPN event IDs in visual bracket order (top-to-bottom).
+    // R32 ESPN event IDs in sequential bracket-position order (ascending ID = ascending bracket position).
     // Must stay in sync with ROUND_MATCHUP_IDS.R32 in the frontend's bracket.js.
     private static final List<String> R32_EVENT_IDS = List.of(
-        "760486", "760489", "760488", "760487",
-        "760492", "760490", "760491", "760495",
-        "760494", "760493", "760496", "760497",
-        "760498", "760500", "760501", "760499"
+        "760486", "760487", "760488", "760489",
+        "760490", "760491", "760492", "760493",
+        "760494", "760495", "760496", "760497",
+        "760498", "760499", "760500", "760501"
     );
 
     /**
@@ -435,9 +435,13 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
      */
     private TeamDto mapTeam(JsonNode teamNode) {
         String logoUrl = "";
+        // Standings endpoint: logos is an array of {href, width, height, ...}
         JsonNode logos = teamNode.path("logos");
         if (logos.isArray() && !logos.isEmpty()) {
             logoUrl = logos.path(0).path("href").asText("");
+        } else {
+            // Scoreboard/events endpoint: logo is a plain string
+            logoUrl = teamNode.path("logo").asText("");
         }
         return new TeamDto(
                 teamNode.path("id").asText(""),
