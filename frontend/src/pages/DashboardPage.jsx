@@ -123,7 +123,7 @@ export default function DashboardPage() {
           ))}
 
           {/* Create entry CTA */}
-          {entries.length < 3 && phaseInfo !== PHASE_INFO.KNOCKOUT && (
+          {entries.length < 3 && phase === 'PRE_TOURNAMENT' && (
             <div className="card border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center min-h-[200px]">
               {creating ? (
                 <form onSubmit={handleCreateEntry} className="w-full space-y-3">

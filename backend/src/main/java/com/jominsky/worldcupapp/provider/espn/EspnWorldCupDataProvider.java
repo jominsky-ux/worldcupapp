@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.jominsky.worldcupapp.dto.AthleteDto;
+import com.jominsky.worldcupapp.dto.BracketMatchupDto;
 import com.jominsky.worldcupapp.dto.GroupDto;
 import com.jominsky.worldcupapp.dto.MatchDto;
 import com.jominsky.worldcupapp.dto.MatchSummaryDto;
@@ -288,6 +290,58 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
     // -------------------------------------------------------------------------
     // Private mapping helpers
     // -------------------------------------------------------------------------
+
+    // R32 ESPN event IDs in visual bracket order (top-to-bottom).
+    // Must stay in sync with ROUND_MATCHUP_IDS.R32 in the frontend's bracket.js.
+    private static final List<String> R32_EVENT_IDS = List.of(
+        "760486", "760489", "760488", "760487",
+        "760492", "760490", "760491", "760495",
+        "760494", "760493", "760496", "760497",
+        "760498", "760500", "760501", "760499"
+    );
+
+    /**
+     * Returns the 16 Round of 32 matchups with real competitor team data from
+     * ESPN's full-season events feed. Matchups are returned in the same bracket
+     * order as {@code R32_EVENT_IDS} (top-to-bottom visual order).
+     *
+     * Teams are null for any matchup ESPN has not yet announced (e.g., if a
+     * third-place group qualifier has not been determined).
+     *
+     * @return list of R32 matchups; empty list if ESPN is unreachable
+     */
+    @Override
+    public List<BracketMatchupDto> getBracketMatchups() {
+        try {
+            JsonNode root = espnApiClient.fetchCoreEvents();
+
+            // Index all events by ID for O(1) lookup
+            Map<String, JsonNode> eventsById = new LinkedHashMap<>();
+            for (JsonNode event : root.path("events")) {
+                eventsById.put(event.path("id").asText(), event);
+            }
+
+            List<BracketMatchupDto> matchups = new ArrayList<>();
+            for (String eventId : R32_EVENT_IDS) {
+                JsonNode event = eventsById.get(eventId);
+                if (event == null) continue;
+
+                JsonNode competitors = event.path("competitions").path(0).path("competitors");
+                JsonNode homeNode = findCompetitor(competitors, "home");
+                JsonNode awayNode = findCompetitor(competitors, "away");
+
+                TeamDto home = homeNode.isMissingNode() ? null : mapTeam(homeNode.path("team"));
+                TeamDto away = awayNode.isMissingNode() ? null : mapTeam(awayNode.path("team"));
+
+                matchups.add(new BracketMatchupDto(eventId, home, away));
+            }
+            return matchups;
+
+        } catch (Exception e) {
+            log.error("Failed to fetch bracket matchups from ESPN", e);
+            return Collections.emptyList();
+        }
+    }
 
     /**
      * Returns all athletes for every team

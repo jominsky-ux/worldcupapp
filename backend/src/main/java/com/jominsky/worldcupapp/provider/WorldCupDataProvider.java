@@ -1,6 +1,7 @@
 package com.jominsky.worldcupapp.provider;
 
 import com.jominsky.worldcupapp.dto.AthleteDto;
+import com.jominsky.worldcupapp.dto.BracketMatchupDto;
 import com.jominsky.worldcupapp.dto.GroupDto;
 import com.jominsky.worldcupapp.dto.MatchSummaryDto;
 import com.jominsky.worldcupapp.dto.PlayerMatchGameStatsDto;
@@ -80,6 +81,15 @@ public interface WorldCupDataProvider {
      * @return tournament status; never null (returns "unknown" phase on failure)
      */
     TournamentStatusDto getTournamentStatus();
+
+    /**
+     * Returns the Round of 32 matchups with real competitor team data from ESPN,
+     * in bracket-visual order (top-to-bottom). Used by the frontend bracket picker
+     * instead of the hardcoded mock team assignments.
+     *
+     * @return list of 16 matchups; may be shorter if ESPN has not announced all teams yet
+     */
+    List<BracketMatchupDto> getBracketMatchups();
 
     /**
      * Returns aggregated fantasy points for every athlete who has appeared in

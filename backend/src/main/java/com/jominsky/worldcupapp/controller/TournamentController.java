@@ -1,11 +1,14 @@
 package com.jominsky.worldcupapp.controller;
 
+import com.jominsky.worldcupapp.dto.BracketMatchupDto;
 import com.jominsky.worldcupapp.dto.TournamentStatusDto;
 import com.jominsky.worldcupapp.provider.WorldCupDataProvider;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * REST controller that exposes current tournament phase and live-match status.
@@ -39,5 +42,16 @@ public class TournamentController {
     @GetMapping("/status")
     public ResponseEntity<TournamentStatusDto> getTournamentStatus() {
         return ResponseEntity.ok(dataProvider.getTournamentStatus());
+    }
+
+    /**
+     * Returns the 16 Round of 32 matchups with real competitor team data from ESPN.
+     * The frontend bracket picker calls this instead of using hardcoded mock teams.
+     *
+     * @return 200 with list of matchups in bracket visual order; empty list on failure
+     */
+    @GetMapping("/bracket")
+    public ResponseEntity<List<BracketMatchupDto>> getBracketMatchups() {
+        return ResponseEntity.ok(dataProvider.getBracketMatchups());
     }
 }

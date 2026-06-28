@@ -82,44 +82,7 @@ export const BRACKET_TEAM_LOOKUP = new Map(
   ])
 )
 
-// Mock actual results for the KNOCKOUT phase.
+// Actual knockout results — populated as matches complete.
 // Keys are ESPN event IDs. Each entry: { winnerId, homeScore, awayScore }
-// Replace with real API data (GET /api/tournament/bracket) when available.
-export const MOCK_KNOCKOUT_RESULTS = {
-  // Round of 32
-  '760486': { winnerId: 1,  homeScore: 2, awayScore: 0 }, // Mexico 2-0 Switzerland
-  '760489': { winnerId: 9,  homeScore: 3, awayScore: 1 }, // Brazil 3-1 Türkiye
-  '760488': { winnerId: 17, homeScore: 1, awayScore: 0 }, // Germany 1-0 Japan
-  '760487': { winnerId: 21, homeScore: 2, awayScore: 1 }, // Netherlands 2-1 Ecuador
-  '760492': { winnerId: 25, homeScore: 2, awayScore: 0 }, // Belgium 2-0 Uruguay
-  '760490': { winnerId: 29, homeScore: 3, awayScore: 0 }, // Spain 3-0 Egypt
-  '760491': { winnerId: 33, homeScore: 2, awayScore: 1 }, // France 2-1 Austria
-  '760495': { winnerId: 37, homeScore: 2, awayScore: 0 }, // Argentina 2-0 Senegal
-  '760494': { winnerId: 3,  homeScore: 1, awayScore: 0 }, // South Korea 1-0 Canada
-  '760493': { winnerId: 13, homeScore: 2, awayScore: 1 }, // USA 2-1 Morocco
-  '760496': { winnerId: 19, homeScore: 1, awayScore: 2 }, // Ivory Coast beats Sweden (away)
-  '760497': { winnerId: 41, homeScore: 3, awayScore: 0 }, // Portugal 3-0 Croatia
-  '760498': { winnerId: 36, homeScore: 0, awayScore: 1 }, // Norway beats Iran (away)
-  '760500': { winnerId: 45, homeScore: 2, awayScore: 0 }, // England 2-0 Colombia
-  '760501': { winnerId: 15, homeScore: 1, awayScore: 0 }, // Australia 1-0 Algeria
-  '760499': { winnerId: 14, homeScore: 2, awayScore: 1 }, // Paraguay 2-1 Tunisia
-  // Round of 16
-  '760503': { winnerId: 9,  homeScore: 0, awayScore: 2 }, // Brazil beats Mexico
-  '760502': { winnerId: 21, homeScore: 0, awayScore: 1 }, // Netherlands beats Germany
-  '760504': { winnerId: 29, homeScore: 1, awayScore: 2 }, // Spain beats Belgium (away)
-  '760505': { winnerId: 33, homeScore: 2, awayScore: 0 }, // France beats Argentina
-  '760506': { winnerId: 13, homeScore: 0, awayScore: 1 }, // USA beats South Korea (away)
-  '760507': { winnerId: 41, homeScore: 0, awayScore: 2 }, // Portugal beats Ivory Coast (away)
-  '760509': { winnerId: 45, homeScore: 1, awayScore: 2 }, // England beats Norway (away)
-  '760508': { winnerId: 15, homeScore: 2, awayScore: 0 }, // Australia beats Paraguay
-  // Quarterfinals
-  '760510': { winnerId: 9,  homeScore: 2, awayScore: 1 }, // Brazil beats Netherlands
-  '760512': { winnerId: 33, homeScore: 1, awayScore: 2 }, // France beats Spain (away)
-  '760511': { winnerId: 41, homeScore: 1, awayScore: 2 }, // Portugal beats USA (away)
-  '760513': { winnerId: 45, homeScore: 2, awayScore: 0 }, // England beats Australia
-  // Semifinals
-  '760514': { winnerId: 33, homeScore: 1, awayScore: 2 }, // France beats Brazil (away)
-  '760515': { winnerId: 45, homeScore: 0, awayScore: 1 }, // England beats Portugal (away)
-  // Final
-  '760517': { winnerId: 33, homeScore: 2, awayScore: 1 }, // France beats England
-}
+// winnerId must be the ESPN team ID (string) of the winning team.
+export const MOCK_KNOCKOUT_RESULTS = {}

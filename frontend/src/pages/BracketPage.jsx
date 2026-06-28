@@ -23,8 +23,9 @@
 import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
 import { useEntry } from '../context/EntryContext'
 import { PhaseGate } from '../components/shared/SharedComponents'
-import { MOCK_R32_MATCHUPS, ROUND_ORDER, ROUND_LABELS, ROUND_MATCHUP_IDS, MATCHUP_ROUND_KEY, BRACKET_TEAM_LOOKUP, MOCK_KNOCKOUT_RESULTS } from '../mocks/bracket'
+import { MOCK_R32_MATCHUPS, ROUND_ORDER, ROUND_LABELS, ROUND_MATCHUP_IDS, MATCHUP_ROUND_KEY, MOCK_KNOCKOUT_RESULTS } from '../mocks/bracket'
 import { BRACKET_POINTS_PER_ROUND } from '../mocks/entries'
+import { useBracketMatchups } from '../hooks/useGameData'
 
 // ── Layout constants ───────────────────────────────────────────────────────
 // Each R32 matchup card occupies CARD_H px. SLOT is the repeating unit
@@ -34,10 +35,19 @@ const SLOT = 80   // CARD_H + 8px gap
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function buildPicksMap(bracketPicks) {
+function buildTeamLookup(r32Matchups) {
+  return new Map(
+    r32Matchups.flatMap((m) => [
+      m.home ? [String(m.home.id), m.home] : null,
+      m.away ? [String(m.away.id), m.away] : null,
+    ].filter(Boolean))
+  )
+}
+
+function buildPicksMap(bracketPicks, teamLookup) {
   const map = {}
   for (const p of bracketPicks ?? []) {
-    const team = BRACKET_TEAM_LOOKUP.get(String(p.winnerTeamId))
+    const team = teamLookup.get(String(p.winnerTeamId))
     if (team) map[p.matchupId] = team
   }
   return map
@@ -68,21 +78,27 @@ export default function BracketPage() {
   const { entries, activeEntry, activeEntryId, setActiveEntryId, saveBracketPick, phase } = useEntry()
   const isReadOnly = phase === 'KNOCKOUT'
   const results = isReadOnly ? MOCK_KNOCKOUT_RESULTS : {}
-  const [picks, setPicks] = useState(() => buildPicksMap(activeEntry?.bracketPicks))
+
+  const { data: liveMatchups } = useBracketMatchups()
+  const r32Matchups = liveMatchups ?? MOCK_R32_MATCHUPS
+
+  const teamLookup = useMemo(() => buildTeamLookup(r32Matchups), [r32Matchups])
+
+  const [picks, setPicks] = useState(() => buildPicksMap(activeEntry?.bracketPicks, teamLookup))
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    setPicks(buildPicksMap(activeEntry?.bracketPicks))
+    setPicks(buildPicksMap(activeEntry?.bracketPicks, teamLookup))
     setError(null)
-  }, [activeEntry?.id])
+  }, [activeEntry?.id, teamLookup])
 
   // Derive matchup objects for every round from R32 + current picks.
   // R32 teams are fixed; later-round teams are the picked winners.
   // IDs come from ROUND_MATCHUP_IDS; sequential pairing (prev[2j]+prev[2j+1] → current[j]).
   const derivedMatchups = useMemo(() => {
-    const byRound = { R32: MOCK_R32_MATCHUPS }
+    const byRound = { R32: r32Matchups }
     for (let i = 1; i < ROUND_ORDER.length; i++) {
       const round = ROUND_ORDER[i]
       const prev = byRound[ROUND_ORDER[i - 1]]
@@ -94,7 +110,7 @@ export default function BracketPage() {
       }))
     }
     return byRound
-  }, [picks])
+  }, [picks, r32Matchups])
 
   const handlePick = useCallback(async (matchupId, team) => {
     const prevPick = picks[matchupId]

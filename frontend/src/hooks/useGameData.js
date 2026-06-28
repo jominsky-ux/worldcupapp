@@ -19,12 +19,14 @@ const delay = (ms = 400) => new Promise((r) => setTimeout(r, ms))
 
 // ─── Phase mapping ─────────────────────────────────────────────────────────
 // groupPicksOpen → PRE_TOURNAMENT (group picks still available)
-// bracketPicksOpen → KNOCKOUT (group stage over, bracket open)
-// neither → GROUP_STAGE (group stage in progress, all picks locked)
-function mapPhase(groupPicksOpen, bracketPicksOpen) {
+// bracketPicksOpen → PRE_KNOCKOUT (group stage over, bracket picks window open)
+// espnPhase === 'group' → GROUP_STAGE (group stage in progress)
+// otherwise → KNOCKOUT (R32 or later round underway)
+function mapPhase(groupPicksOpen, bracketPicksOpen, espnPhase) {
   if (groupPicksOpen) return 'PRE_TOURNAMENT'
-  if (bracketPicksOpen) return 'KNOCKOUT'
-  return 'GROUP_STAGE'
+  if (bracketPicksOpen) return 'PRE_KNOCKOUT'
+  if (espnPhase === 'group') return 'GROUP_STAGE'
+  return 'KNOCKOUT'
 }
 
 // ─── Field normalisation ───────────────────────────────────────────────────
@@ -167,7 +169,7 @@ export function useTournamentInfo() {
     queryFn: async () => {
       const { data } = await apiClient.get('/api/tournament/status')
       return {
-        phase: mapPhase(data.groupPicksOpen, data.bracketPicksOpen),
+        phase: mapPhase(data.groupPicksOpen, data.bracketPicksOpen, data.phase),
         hasLiveMatches: data.hasLiveMatches,
         nextMatchDate: data.nextMatchDate,
         deadlines: {
@@ -181,6 +183,31 @@ export function useTournamentInfo() {
     },
     staleTime: 1000 * 30,
     refetchInterval: 1000 * 60,
+  })
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// BRACKET MATCHUPS — LIVE
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * useBracketMatchups — fetches the 16 R32 matchups with real team data from ESPN.
+ * Source: GET /api/tournament/bracket
+ * Replaces the hardcoded MOCK_R32_MATCHUPS in bracket.js.
+ * Teams are normalised to the same shape ({code, flagUrl, ...}) that BracketPage expects.
+ */
+export function useBracketMatchups() {
+  return useQuery({
+    queryKey: ['bracketMatchups'],
+    queryFn: () =>
+      apiClient.get('/api/tournament/bracket').then((res) =>
+        res.data.map((m) => ({
+          id: m.id,
+          home: m.homeTeam ? normalizeTeam(m.homeTeam) : null,
+          away: m.awayTeam ? normalizeTeam(m.awayTeam) : null,
+        }))
+      ),
+    staleTime: 1000 * 60 * 60,
   })
 }
 
