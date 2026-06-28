@@ -16,22 +16,22 @@ export const ROUND_LABELS = {
   FINAL: 'Final',
 }
 
-// ESPN event IDs for each round in sequential bracket-position order.
-// ESPN assigns event IDs in bracket order when building the schedule, so
-// ascending ID order gives the correct visual top-to-bottom bracket layout.
+// ESPN event IDs ordered by bracket position (top-to-bottom visual layout).
 // Sequential pairing: round[2j] + round[2j+1] → next round[j].
+// IDs are chronological by match date, NOT by bracket slot — ordering here
+// was derived from the ESPN bracket draw.
 export const ROUND_MATCHUP_IDS = {
   R32: [
-    '760486', '760487', '760488', '760489',  // bracket pos 1-4  (matches 73-76)
-    '760490', '760491', '760492', '760493',  // bracket pos 5-8  (matches 77-80)
-    '760494', '760495', '760496', '760497',  // bracket pos 9-12 (matches 81-84)
-    '760498', '760499', '760500', '760501',  // bracket pos 13-16 (matches 85-88)
+    '760488', '760491', '760486', '760489',  // GER/PAR, FRA/SWE, RSA/CAN, NED/MAR → QF 7/9
+    '760487', '760490', '760492', '760493',  // BRA/JPN, CIV/NOR, MEX/ECU, ENG/CGO → QF 7/11 (5pm)
+    '760497', '760496', '760495', '760494',  // POR/CRO, ESP/AUT, USA/BIH, BEL/SEN → QF 7/10
+    '760500', '760499', '760498', '760501',  // ARG/CPV, AUS/EGY, SUI/ALG, COL/GHA → QF 7/11 (9pm)
   ],
   R16: [
-    '760502', '760503', '760504', '760505',  // matches 89-92 (top bracket)
-    '760506', '760507', '760508', '760509',  // matches 93-96 (bottom bracket)
+    '760503', '760502', '760504', '760505',  // GER/FRA winner, RSA/NED winner, BRA/CIV winner, MEX/ENG winner
+    '760506', '760507', '760508', '760509',  // POR/ESP winner, USA/BEL winner, ARG/AUS winner, SUI/COL winner
   ],
-  QF:    ['760510', '760511', '760512', '760513'],  // matches 97-100
+  QF:    ['760510', '760512', '760511', '760513'],  // QF 7/9, QF 7/11 5pm, QF 7/10, QF 7/11 9pm
   SF:    ['760514', '760515'],                      // matches 101-102
   FINAL: ['760517'],                                // match 104 (760516 = 3rd place, excluded)
 }
