@@ -23,11 +23,14 @@ jobs:
             backend:
               - 'backend/**'
               - '!backend/**/README.md'
-              - '.github/workflows/deploy.yaml'
             frontend:
-              - 'frontend/**'
+              - 'frontend/src/**'
+              - 'frontend/index.html'
+              - 'frontend/package*.json'
+              - 'frontend/vite.config.js'
+              - 'frontend/postcss.config.js'
+              - 'frontend/tailwind.config.js'
               - '!frontend/**/README.md'
-              - '.github/workflows/deploy.yaml'
 
   deploy-backend:
     needs: changes
@@ -95,7 +98,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with: { node-version: '24' }
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
