@@ -22,9 +22,9 @@ export const ROUND_LABELS = {
 // was derived from the ESPN bracket draw.
 export const ROUND_MATCHUP_IDS = {
   R32: [
-    '760488', '760491', '760486', '760489',  // GER/PAR, FRA/SWE, RSA/CAN, NED/MAR → QF 7/9
-    '760487', '760490', '760492', '760493',  // BRA/JPN, CIV/NOR, MEX/ECU, ENG/CGO → QF 7/11 (5pm)
-    '760497', '760496', '760495', '760494',  // POR/CRO, ESP/AUT, USA/BIH, BEL/SEN → QF 7/10
+    '760489', '760492', '760486', '760488',  // GER/PAR, FRA/SWE, RSA/CAN, NED/MAR → QF 7/9
+    '760487', '760490', '760491', '760494',  // BRA/JPN, CIV/NOR, MEX/ECU, ENG/CGO → QF 7/11 (5pm)
+    '760497', '760496', '760495', '760493',  // POR/CRO, ESP/AUT, USA/BIH, BEL/SEN → QF 7/10
     '760500', '760499', '760498', '760501',  // ARG/CPV, AUS/EGY, SUI/ALG, COL/GHA → QF 7/11 (9pm)
   ],
   R16: [

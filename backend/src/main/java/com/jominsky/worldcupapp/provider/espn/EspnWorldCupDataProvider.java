@@ -295,9 +295,9 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
     // IDs are chronological by match date; this order is derived from the ESPN bracket draw.
     // Must stay in sync with ROUND_MATCHUP_IDS.R32 in the frontend's bracket.js.
     private static final List<String> R32_EVENT_IDS = List.of(
-        "760488", "760491", "760486", "760489",  // GER/PAR, FRA/SWE, RSA/CAN, NED/MAR
-        "760487", "760490", "760492", "760493",  // BRA/JPN, CIV/NOR, MEX/ECU, ENG/CGO
-        "760497", "760496", "760495", "760494",  // POR/CRO, ESP/AUT, USA/BIH, BEL/SEN
+        "760489", "760492", "760486", "760488",  // GER/PAR, FRA/SWE, RSA/CAN, NED/MAR
+        "760487", "760490", "760491", "760494",  // BRA/JPN, CIV/NOR, MEX/ECU, ENG/CGO
+        "760497", "760496", "760495", "760493",  // POR/CRO, ESP/AUT, USA/BIH, BEL/SEN
         "760500", "760499", "760498", "760501"   // ARG/CPV, AUS/EGY, SUI/ALG, COL/GHA
     );
 
