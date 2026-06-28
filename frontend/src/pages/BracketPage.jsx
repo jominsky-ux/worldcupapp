@@ -80,7 +80,14 @@ export default function BracketPage() {
   const results = isReadOnly ? MOCK_KNOCKOUT_RESULTS : {}
 
   const { data: liveMatchups, isLoading: matchupsLoading } = useBracketMatchups()
-  const r32Matchups = liveMatchups ?? []
+
+  // Reorder API results to match ROUND_MATCHUP_IDS.R32 bracket positions.
+  // ESPN returns events in chronological order, not bracket-slot order.
+  const r32Matchups = useMemo(() => {
+    if (!liveMatchups?.length) return []
+    const byId = new Map(liveMatchups.map((m) => [String(m.id), m]))
+    return ROUND_MATCHUP_IDS.R32.map((id) => byId.get(id)).filter(Boolean)
+  }, [liveMatchups])
 
   const teamLookup = useMemo(() => buildTeamLookup(r32Matchups), [r32Matchups])
 
