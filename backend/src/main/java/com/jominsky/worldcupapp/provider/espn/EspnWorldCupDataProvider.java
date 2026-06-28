@@ -327,20 +327,66 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
                 JsonNode event = eventsById.get(eventId);
                 if (event == null) continue;
 
-                JsonNode competitors = event.path("competitions").path(0).path("competitors");
+                JsonNode competition = event.path("competitions").path(0);
+                JsonNode competitors = competition.path("competitors");
                 JsonNode homeNode = findCompetitor(competitors, "home");
                 JsonNode awayNode = findCompetitor(competitors, "away");
 
                 TeamDto home = homeNode.isMissingNode() ? null : mapTeam(homeNode.path("team"));
                 TeamDto away = awayNode.isMissingNode() ? null : mapTeam(awayNode.path("team"));
 
-                matchups.add(new BracketMatchupDto(eventId, home, away));
+                boolean completed = competition.path("status").path("type").path("completed").asBoolean(false);
+                String homeScore = null;
+                String awayScore = null;
+                String winnerId = null;
+                if (completed && !homeNode.isMissingNode() && !awayNode.isMissingNode()) {
+                    homeScore = homeNode.path("score").asText(null);
+                    awayScore = awayNode.path("score").asText(null);
+                    if (homeNode.path("winner").asBoolean(false)) {
+                        winnerId = homeNode.path("team").path("id").asText(null);
+                    } else if (awayNode.path("winner").asBoolean(false)) {
+                        winnerId = awayNode.path("team").path("id").asText(null);
+                    }
+                }
+
+                matchups.add(new BracketMatchupDto(eventId, home, away, homeScore, awayScore, winnerId));
             }
             return matchups;
 
         } catch (Exception e) {
             log.error("Failed to fetch bracket matchups from ESPN", e);
             return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Returns a map of ESPN event ID → winning team ID for every completed match
+     * in the full-season events feed. The scoring service uses this to validate
+     * bracket picks against actual results.
+     *
+     * @return map of eventId → winnerId; empty map if ESPN is unreachable
+     */
+    @Override
+    public Map<String, String> getCompletedMatchWinners() {
+        try {
+            JsonNode root = espnApiClient.fetchCoreEvents();
+            Map<String, String> winners = new HashMap<>();
+            for (JsonNode event : root.path("events")) {
+                String eventId = event.path("id").asText();
+                JsonNode competition = event.path("competitions").path(0);
+                boolean completed = competition.path("status").path("type").path("completed").asBoolean(false);
+                if (!completed) continue;
+                for (JsonNode competitor : competition.path("competitors")) {
+                    if (competitor.path("winner").asBoolean(false)) {
+                        winners.put(eventId, competitor.path("team").path("id").asText());
+                        break;
+                    }
+                }
+            }
+            return winners;
+        } catch (Exception e) {
+            log.error("Failed to fetch completed match winners from ESPN", e);
+            return Collections.emptyMap();
         }
     }
 

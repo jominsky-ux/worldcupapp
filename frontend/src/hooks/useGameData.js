@@ -205,9 +205,13 @@ export function useBracketMatchups() {
           id: m.id,
           home: m.homeTeam ? normalizeTeam(m.homeTeam) : null,
           away: m.awayTeam ? normalizeTeam(m.awayTeam) : null,
+          homeScore: m.homeScore ?? null,
+          awayScore: m.awayScore ?? null,
+          winnerId: m.winnerId ?? null,
         }))
       ),
-    staleTime: 1000 * 60 * 60,
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 5,
   })
 }
 

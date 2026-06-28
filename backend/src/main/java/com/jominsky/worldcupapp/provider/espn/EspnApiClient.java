@@ -134,6 +134,7 @@ public class EspnApiClient {
   }
 
   /** Fetches all 2026 World Cup events via the site API scoreboard date range. */
+  @Cacheable(CacheConfig.BRACKET_CACHE)
   public JsonNode fetchCoreEvents() {
     return get(baseUrl + "/scoreboard?dates=20260611-20261220&limit=200");
   }

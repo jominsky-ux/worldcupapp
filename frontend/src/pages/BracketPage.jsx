@@ -23,7 +23,7 @@
 import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
 import { useEntry } from '../context/EntryContext'
 import { PhaseGate } from '../components/shared/SharedComponents'
-import { ROUND_ORDER, ROUND_LABELS, ROUND_MATCHUP_IDS, MATCHUP_ROUND_KEY, MOCK_KNOCKOUT_RESULTS } from '../mocks/bracket'
+import { ROUND_ORDER, ROUND_LABELS, ROUND_MATCHUP_IDS, MATCHUP_ROUND_KEY } from '../mocks/bracket'
 import { BRACKET_POINTS_PER_ROUND } from '../mocks/entries'
 import { useBracketMatchups } from '../hooks/useGameData'
 
@@ -77,9 +77,21 @@ function cascadeClear(picks, matchupId, clearedTeam) {
 export default function BracketPage() {
   const { entries, activeEntry, activeEntryId, setActiveEntryId, saveBracketPick, phase } = useEntry()
   const isReadOnly = phase === 'KNOCKOUT'
-  const results = isReadOnly ? MOCK_KNOCKOUT_RESULTS : {}
 
   const { data: liveMatchups, isLoading: matchupsLoading } = useBracketMatchups()
+
+  // Build a results map from live matchup data (only populated for completed games).
+  // Only shown when picks are locked (KNOCKOUT phase) so scores don't spoil open picks.
+  const results = useMemo(() => {
+    if (!isReadOnly || !liveMatchups?.length) return {}
+    const map = {}
+    for (const m of liveMatchups) {
+      if (m.winnerId) {
+        map[m.id] = { winnerId: m.winnerId, homeScore: m.homeScore, awayScore: m.awayScore }
+      }
+    }
+    return map
+  }, [isReadOnly, liveMatchups])
 
   // Reorder API results to match ROUND_MATCHUP_IDS.R32 bracket positions.
   // ESPN returns events in chronological order, not bracket-slot order.

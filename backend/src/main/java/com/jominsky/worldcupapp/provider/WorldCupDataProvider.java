@@ -11,6 +11,7 @@ import com.jominsky.worldcupapp.dto.StandingsGroupDto;
 import com.jominsky.worldcupapp.dto.TournamentStatusDto;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Abstraction layer for retrieving World Cup data from an external source.
@@ -90,6 +91,14 @@ public interface WorldCupDataProvider {
      * @return list of 16 matchups; may be shorter if ESPN has not announced all teams yet
      */
     List<BracketMatchupDto> getBracketMatchups();
+
+    /**
+     * Returns a map of ESPN event ID → winning team ID for every completed match
+     * in the season. Used by the scoring service to validate bracket picks.
+     *
+     * @return map of eventId → winnerId; empty map on provider failure
+     */
+    Map<String, String> getCompletedMatchWinners();
 
     /**
      * Returns aggregated fantasy points for every athlete who has appeared in

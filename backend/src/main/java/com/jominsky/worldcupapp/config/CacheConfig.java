@@ -29,6 +29,7 @@ public class CacheConfig {
     public static final String MATCH_SUMMARY_CACHE = "matchSummary";
     public static final String TEAM_CACHE = "teams";
     public static final String SEASON_CACHE = "season";
+    public static final String BRACKET_CACHE = "bracket";
 
     // ------- TTL constants (minutes) -------
 
@@ -68,6 +69,10 @@ public class CacheConfig {
     private static final long SEASON_TTL_MINUTES = 1440; // 24 hours
     private static final long SEASON_MAX_SIZE = 1;
 
+    /** Full-season events feed — used for bracket matchups and winner lookup. */
+    private static final long BRACKET_TTL_MINUTES = 1;
+    private static final long BRACKET_MAX_SIZE = 1;
+
     /**
      * Creates a SimpleCacheManager with named Caffeine caches.
      * Each cache uses its own TTL and size limit to balance freshness
@@ -106,6 +111,12 @@ public class CacheConfig {
                         Caffeine.newBuilder()
                                 .expireAfterWrite(SEASON_TTL_MINUTES, TimeUnit.MINUTES)
                                 .maximumSize(SEASON_MAX_SIZE)
+                                .build()),
+
+                new CaffeineCache(BRACKET_CACHE,
+                        Caffeine.newBuilder()
+                                .expireAfterWrite(BRACKET_TTL_MINUTES, TimeUnit.MINUTES)
+                                .maximumSize(BRACKET_MAX_SIZE)
                                 .build())));
         return manager;
     }

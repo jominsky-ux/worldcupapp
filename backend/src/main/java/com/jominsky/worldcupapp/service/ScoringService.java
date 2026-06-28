@@ -132,11 +132,12 @@ public class ScoringService {
         Map<String, Integer> athletePoints = buildAthletePointsMap();
         Map<String, GroupPositions> groupPositions = buildGroupPositionsMap(status);
 
+        Map<String, String> completedWinners = dataProvider.getCompletedMatchWinners();
         List<Entry> allEntries = entryRepository.findAll();
         List<LeaderboardEntryDto> rows = new ArrayList<>();
 
         for (Entry entry : allEntries) {
-            EntryScoreDto score = scoreEntry(entry, groupPositions, athletePoints, status);
+            EntryScoreDto score = scoreEntry(entry, groupPositions, athletePoints, status, completedWinners);
             User user = entry.getUser();
             rows.add(new LeaderboardEntryDto(0, user.getDisplayName(), user.getEmail(),
                     entry.getId(), entry.getEntryNumber(), entry.getName(), score.totalPoints()));
@@ -169,7 +170,8 @@ public class ScoringService {
         TournamentStatusDto status = dataProvider.getTournamentStatus();
         Map<String, Integer> athletePoints = buildAthletePointsMap();
         Map<String, GroupPositions> groupPositions = buildGroupPositionsMap(status);
-        EntryScoreDto score = scoreEntry(entry, groupPositions, athletePoints, status);
+        Map<String, String> completedWinners = dataProvider.getCompletedMatchWinners();
+        EntryScoreDto score = scoreEntry(entry, groupPositions, athletePoints, status, completedWinners);
 
         Map<String, AthleteDto> athletesById = new HashMap<>();
         for (AthleteDto a : dataProvider.getAllTeamAthletes()) {
@@ -207,8 +209,9 @@ public class ScoringService {
         Map<String, Integer> athletePoints = buildAthletePointsMap();
         Map<String, GroupPositions> groupPositions = buildGroupPositionsMap(status);
 
+        Map<String, String> completedWinners = dataProvider.getCompletedMatchWinners();
         return entryRepository.findByUserOrderByEntryNumber(user).stream()
-                .map(entry -> scoreEntry(entry, groupPositions, athletePoints, status))
+                .map(entry -> scoreEntry(entry, groupPositions, athletePoints, status, completedWinners))
                 .toList();
     }
 
@@ -217,10 +220,11 @@ public class ScoringService {
     private EntryScoreDto scoreEntry(Entry entry,
             Map<String, GroupPositions> groupPositions,
             Map<String, Integer> athletePoints,
-            TournamentStatusDto status) {
+            TournamentStatusDto status,
+            Map<String, String> completedWinners) {
         int groupPts   = scoreGroupPicks(entry, groupPositions);
         int thirdPts   = scoreThirdPlacePicks(entry, groupPositions);
-        int bracketPts = scoreBracketPicks(entry, status);
+        int bracketPts = scoreBracketPicks(entry, status, completedWinners);
         int squadPts   = scoreSquad(entry, athletePoints);
         int total      = groupPts + thirdPts + bracketPts + squadPts;
 
@@ -278,10 +282,7 @@ public class ScoringService {
         return pts;
     }
 
-    private int scoreBracketPicks(Entry entry, TournamentStatusDto status) {
-        // Only score once knockout matches are actually being played.
-        // During PRE_TOURNAMENT and GROUP_STAGE no knockout games have occurred;
-        // during PRE_KNOCKOUT picks are open but no matches have started yet.
+    private int scoreBracketPicks(Entry entry, TournamentStatusDto status, Map<String, String> completedWinners) {
         if (!KNOCKOUT_PHASES.contains(status.phase())) {
             return 0;
         }
@@ -289,9 +290,10 @@ public class ScoringService {
         List<KnockoutPick> picks = knockoutPickRepository.findByEntry(entry);
         int pts = 0;
         for (KnockoutPick pick : picks) {
-            Integer roundPts = KNOCKOUT_POINTS.get(pick.getMatchEventId());
-            if (roundPts != null) {
-                pts += roundPts;
+            String actualWinner = completedWinners.get(pick.getMatchEventId());
+            if (actualWinner != null && actualWinner.equals(pick.getWinnerTeamId())) {
+                Integer roundPts = KNOCKOUT_POINTS.get(pick.getMatchEventId());
+                if (roundPts != null) pts += roundPts;
             }
         }
         return pts;
