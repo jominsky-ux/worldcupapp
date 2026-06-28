@@ -23,15 +23,15 @@ export const ROUND_LABELS = {
 export const ROUND_MATCHUP_IDS = {
   R32: [
     '760489', '760492', '760486', '760488',  // GER/PAR, FRA/SWE, RSA/CAN, NED/MAR → QF 7/9
-    '760487', '760490', '760491', '760495',  // BRA/JPN, CIV/NOR, MEX/ECU, ENG/COD → QF 7/11 (5pm)
-    '760497', '760496', '760494', '760493',  // POR/CRO, ESP/AUT, USA/BIH, BEL/SEN → QF 7/10
+    '760497', '760496', '760494', '760493',  // POR/CRO, ESP/AUT, USA/BIH, BEL/SEN → QF 7/11 (5pm)
+    '760487', '760490', '760491', '760495',  // BRA/JPN, CIV/NOR, MEX/ECU, ENG/COD → QF 7/10
     '760500', '760499', '760498', '760501',  // ARG/CPV, AUS/EGY, SUI/ALG, COL/GHA → QF 7/11 (9pm)
   ],
   R16: [
-    '760503', '760502', '760504', '760505',  // GER/FRA winner, RSA/NED winner, BRA/CIV winner, MEX/ENG winner
-    '760506', '760507', '760508', '760509',  // POR/ESP winner, USA/BEL winner, ARG/AUS winner, SUI/COL winner
+    '760503', '760502', '760506', '760507',  // GER/FRA winner, RSA/NED winner, POR/ESP winner, USA/BEL winner
+    '760504', '760505', '760508', '760509',  // BRA/CIV winner, MEX/ENG winner, ARG/AUS winner, SUI/COL winner
   ],
-  QF:    ['760510', '760512', '760511', '760513'],  // QF 7/9, QF 7/11 5pm, QF 7/10, QF 7/11 9pm
+  QF:    ['760510', '760512', '760511', '760513'],  // QF 7/9 (GER half), QF 7/11 5pm (ESP half), QF 7/10 (BRA half), QF 7/11 9pm (ARG half)
   SF:    ['760514', '760515'],                      // matches 101-102
   FINAL: ['760517'],                                // match 104 (760516 = 3rd place, excluded)
 }

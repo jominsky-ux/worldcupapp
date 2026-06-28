@@ -296,8 +296,8 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
     // Must stay in sync with ROUND_MATCHUP_IDS.R32 in the frontend's bracket.js.
     private static final List<String> R32_EVENT_IDS = List.of(
         "760489", "760492", "760486", "760488",  // GER/PAR, FRA/SWE, RSA/CAN, NED/MAR
-        "760487", "760490", "760491", "760495",  // BRA/JPN, CIV/NOR, MEX/ECU, ENG/COD
         "760497", "760496", "760494", "760493",  // POR/CRO, ESP/AUT, USA/BIH, BEL/SEN
+        "760487", "760490", "760491", "760495",  // BRA/JPN, CIV/NOR, MEX/ECU, ENG/COD
         "760500", "760499", "760498", "760501"   // ARG/CPV, AUS/EGY, SUI/ALG, COL/GHA
     );
 
