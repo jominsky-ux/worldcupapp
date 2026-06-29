@@ -194,10 +194,12 @@ The standalone `.mermaid` source lives at `src/component-tree.mermaid`.
 | Clean sheet ≥ 60 min (GK / DEF) | +4 |
 | Clean sheet ≥ 60 min (MID) | +1 |
 | Every 3 saves (GK only) | +1 |
+| Penalty kick saved (GK only) | +5 |
 | ≥ 10 defensive interventions (DEF / MID / FWD) | +2 |
 | Yellow card | −1 |
 | Red card | −3 |
 | Own goal | −2 |
+| Penalty kick missed | −2 |
 
 Clicking **View stats** on any player in your squad opens a per-game breakdown (`PlayerMatchStatsModal`) showing opponent, match date, and the full stat line above for every completed match.
 

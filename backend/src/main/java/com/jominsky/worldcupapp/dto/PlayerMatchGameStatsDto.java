@@ -19,6 +19,8 @@ import java.time.Instant;
  * @param ownGoals               own goals conceded
  * @param yellowCards            yellow cards received
  * @param redCards               red cards received
+ * @param penaltyMisses          penalty kicks missed (-2 pts each)
+ * @param penaltySaves           penalty kicks saved by goalkeeper (+5 pts each)
  */
 public record PlayerMatchGameStatsDto(
         String eventId,
@@ -34,5 +36,7 @@ public record PlayerMatchGameStatsDto(
         int saves,
         int ownGoals,
         int yellowCards,
-        int redCards
+        int redCards,
+        int penaltyMisses,
+        int penaltySaves
 ) {}

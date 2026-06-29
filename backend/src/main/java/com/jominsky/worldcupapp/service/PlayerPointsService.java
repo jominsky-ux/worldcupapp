@@ -48,6 +48,8 @@ public class PlayerPointsService {
     private static final int PTS_OWN_GOAL                       = -2;
     private static final int PTS_DEFENSIVE_INTERVENTIONS        =  2;
     private static final int DEFENSIVE_INTERVENTIONS_THRESHOLD  = 10;
+    private static final int PTS_PENALTY_MISS                   = -2;
+    private static final int PTS_PENALTY_SAVE                   =  5;
 
     // Re-process a completed match for up to 3 hours after kickoff to pick up
     // any ESPN stat corrections; skip after that as the data is effectively final.
@@ -219,6 +221,8 @@ public class PlayerPointsService {
                     pms.setSaves(stats.getOrDefault("saves", 0));
                     pms.setDefensiveInterventions(stats.getOrDefault("defensiveInterventions", 0));
                     pms.setOwnGoals(stats.getOrDefault("ownGoals", 0));
+                    pms.setPenaltyMisses(stats.getOrDefault("penaltyKicksMissed", 0));
+                    pms.setPenaltySaves(stats.getOrDefault("penaltyKicksSaved", 0));
                     pms.setTotalPoints(calculatePoints(pms));
                     repository.save(pms);
                     saved++;
@@ -262,6 +266,7 @@ public class PlayerPointsService {
 
         if ("GK".equals(pos)) {
             pts += (s.getSaves() / 3) * PTS_SAVES_PER_3;
+            pts += s.getPenaltySaves() * PTS_PENALTY_SAVE;
         }
 
         if (!"GK".equals(pos) && s.getDefensiveInterventions() >= DEFENSIVE_INTERVENTIONS_THRESHOLD) {
@@ -269,6 +274,7 @@ public class PlayerPointsService {
         }
 
         pts += s.getOwnGoals() * PTS_OWN_GOAL;
+        pts += s.getPenaltyMisses() * PTS_PENALTY_MISS;
 
         return pts;
     }

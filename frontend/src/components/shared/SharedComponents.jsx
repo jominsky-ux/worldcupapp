@@ -234,9 +234,11 @@ export function PlayerMatchStatsModal({ player, onClose }) {
                   <th className="py-2 pr-3 text-right">DC</th>
                   <th className="py-2 pr-3 text-right">CS</th>
                   <th className="py-2 pr-3 text-right">Sv</th>
+                  <th className="py-2 pr-3 text-right">PKSv</th>
                   <th className="py-2 pr-3 text-right">OG</th>
                   <th className="py-2 pr-3 text-right">YC</th>
                   <th className="py-2 pr-3 text-right">RC</th>
+                  <th className="py-2 pr-3 text-right">PKM</th>
                 </tr>
               </thead>
               <tbody>
@@ -255,9 +257,11 @@ export function PlayerMatchStatsModal({ player, onClose }) {
                     <td className="py-2 pr-3 text-right tabular-nums">{m.defensiveInterventions}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{m.cleanSheet ? '✓' : ''}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{m.saves}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{m.penaltySaves || ''}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{m.ownGoals}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{m.yellowCards}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{m.redCards}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{m.penaltyMisses || ''}</td>
                   </tr>
                 ))}
               </tbody>

@@ -42,6 +42,8 @@ public class PlayerMatchStats {
     private int saves;
     private int defensiveInterventions;
     private int ownGoals;
+    private int penaltyMisses;
+    private int penaltySaves;
     private int totalPoints;
 
     @Column(nullable = false, updatable = false)
@@ -79,6 +81,10 @@ public class PlayerMatchStats {
     public void setDefensiveInterventions(int defensiveInterventions) { this.defensiveInterventions = defensiveInterventions; }
     public int getOwnGoals() { return ownGoals; }
     public void setOwnGoals(int ownGoals) { this.ownGoals = ownGoals; }
+    public int getPenaltyMisses() { return penaltyMisses; }
+    public void setPenaltyMisses(int penaltyMisses) { this.penaltyMisses = penaltyMisses; }
+    public int getPenaltySaves() { return penaltySaves; }
+    public void setPenaltySaves(int penaltySaves) { this.penaltySaves = penaltySaves; }
     public int getTotalPoints() { return totalPoints; }
     public void setTotalPoints(int totalPoints) { this.totalPoints = totalPoints; }
     public Instant getCreatedAt() { return createdAt; }

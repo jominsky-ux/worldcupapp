@@ -297,15 +297,19 @@ service/
                           Stops polling after 2026-07-20 (day after the Final).
                           ESPN stat keys used: minutes, totalGoals, goalAssists,
                           goalsConceded (clean sheet = 0 conceded), yellowCards,
-                          redCards, saves, defensiveInterventions, ownGoals.
+                          redCards, saves, defensiveInterventions, ownGoals,
+                          penaltyKicksMissed (offensive category),
+                          penaltyKicksSaved (goalkeeping category).
                           FPL-style scoring:
                             Played ≥ 60 min: +2 | Played < 60 min: +1
                             Goal (GK/DEF): +6 | (MID): +5 | (FWD): +4
                             Assist: +3
                             Clean sheet ≥ 60 min (GK/DEF): +4 | (MID): +1
                             Saves per 3 (GK only): +1
+                            Penalty kick saved (GK only): +5
                             ≥ 10 defensive interventions (DEF/MID/FWD): +2
                             Yellow card: -1 | Red card: -3 | Own goal: -2
+                            Penalty kick missed: -2
 repository/               Spring Data JPA repositories for all entities
   PlayerMatchStatsRepository  sumPointsByAthlete() / countMatchesByAthlete() — grouped
                           aggregate queries used by ScoringService for squad points and
@@ -371,6 +375,8 @@ db/migration/
   V10__add_defensive_interventions        defensive_interventions column on player_match_stats
   V11__add_own_goals                      own_goals column on player_match_stats
   V12__add_opponent_and_match_date        opponent_team_id + match_date columns on player_match_stats
+  V13__add_penalty_stats                  penalty_misses + penalty_saves columns on player_match_stats; resets
+                                          opponent_team_id to trigger scheduler backfill of new columns
 ```
 
 ### Caching
@@ -383,6 +389,7 @@ Raw ESPN responses are cached in `EspnApiClient` using Caffeine:
 | `scoreboard` | 1 min | Needs to reflect live score changes |
 | `matchSummary` | 5 min | Stable once a match ends |
 | `teams` | 24 h | Team rosters are static during the tournament |
+| `bracket` | 1 min | Full-season events feed shared by bracket matchups and completed-winner lookup |
 
 ### Database schema
 
@@ -460,6 +467,8 @@ erDiagram
         int         saves
         int         defensive_interventions
         int         own_goals
+        int         penalty_misses          "penalty kicks missed (-2 pts each)"
+        int         penalty_saves           "penalty kicks saved by GK (+5 pts each)"
         int         total_points
         timestamptz created_at       "not null"
     }

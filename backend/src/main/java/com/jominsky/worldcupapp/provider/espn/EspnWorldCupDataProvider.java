@@ -468,7 +468,9 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
                     s.getSaves(),
                     s.getOwnGoals(),
                     s.getYellowCards(),
-                    s.getRedCards()));
+                    s.getRedCards(),
+                    s.getPenaltyMisses(),
+                    s.getPenaltySaves()));
         }
         return result;
     }
