@@ -287,10 +287,12 @@ export function PlayerMatchStatsModal({ player, onClose }) {
  *   onClose — function called when the user dismisses the modal
  */
 
+import { useState } from 'react'
 import { useEntryDetail } from '../../hooks/useGameData'
 
 export function EntryDetailModal({ entryId, onClose }) {
   const { data: detail, isLoading } = useEntryDetail(entryId)
+  const [selectedPlayer, setSelectedPlayer] = useState(null)
 
   if (!entryId) return null
 
@@ -303,6 +305,7 @@ export function EntryDetailModal({ entryId, onClose }) {
         className="card max-w-2xl w-full max-h-[80vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
+
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h2 className="font-body font-semibold text-xl text-brand">
@@ -358,7 +361,12 @@ export function EntryDetailModal({ entryId, onClose }) {
                   {detail.squad.map((p) => (
                     <tr key={p.athleteId} className="border-b border-gray-50 last:border-0">
                       <td className="py-2 pr-3">
-                        <span className="text-brand font-medium">{p.name}</span>
+                        <button
+                          onClick={() => setSelectedPlayer({ id: p.athleteId, name: p.name, teamCode: p.teamAbbreviation })}
+                          className="text-brand font-medium hover:underline text-left"
+                        >
+                          {p.name}
+                        </button>
                         <span className="text-xs text-gray-400 ml-1.5">
                           {p.teamAbbreviation || '—'} · {p.position}
                         </span>
@@ -375,6 +383,15 @@ export function EntryDetailModal({ entryId, onClose }) {
           </>
         )}
       </div>
+      {/* Stops the stats modal backdrop click from propagating to this modal's backdrop handler */}
+      {selectedPlayer && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <PlayerMatchStatsModal
+            player={selectedPlayer}
+            onClose={() => setSelectedPlayer(null)}
+          />
+        </div>
+      )}
     </div>
   )
 }
