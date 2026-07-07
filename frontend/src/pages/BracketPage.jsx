@@ -118,11 +118,11 @@ export default function BracketPage() {
     setError(null)
   }, [activeEntry?.id, teamLookup])
 
-  // Derive matchup objects for every round from R32 + picks/actual results.
-  // R32 teams are fixed from ESPN. For R16+:
-  //   - In KNOCKOUT mode (picks locked): use actual ESPN teams when known, fall
-  //     back to user's picks for future undetermined rounds.
-  //   - In pick-open mode: derive teams from user's picks (games haven't happened).
+  // Derive matchup objects for every round from R32 + picks.
+  // R32 teams are fixed (from ESPN). For R16 onward, the teams shown are always
+  // the user's picks — whoever they predicted would advance to that slot. Actual
+  // results are overlaid separately via the `results` map, so the bracket reads
+  // as "my predicted path + how each game actually turned out."
   // IDs come from ROUND_MATCHUP_IDS; sequential pairing (prev[2j]+prev[2j+1] → current[j]).
   const derivedMatchups = useMemo(() => {
     const byRound = { R32: r32Matchups }
@@ -130,18 +130,14 @@ export default function BracketPage() {
       const round = ROUND_ORDER[i]
       const prev = byRound[ROUND_ORDER[i - 1]]
       const ids = ROUND_MATCHUP_IDS[round]
-      byRound[round] = Array.from({ length: prev.length / 2 }, (_, j) => {
-        const id = ids[j]
-        const liveMatchup = allMatchupsById.get(id)
-        const home = (isReadOnly && liveMatchup?.home?.id) ? liveMatchup.home
-          : picks[prev[2 * j].id] ?? null
-        const away = (isReadOnly && liveMatchup?.away?.id) ? liveMatchup.away
-          : picks[prev[2 * j + 1].id] ?? null
-        return { id, home, away }
-      })
+      byRound[round] = Array.from({ length: prev.length / 2 }, (_, j) => ({
+        id: ids[j],
+        home: picks[prev[2 * j].id] ?? null,
+        away: picks[prev[2 * j + 1].id] ?? null,
+      }))
     }
     return byRound
-  }, [picks, r32Matchups, isReadOnly, allMatchupsById])
+  }, [picks, r32Matchups])
 
   const handlePick = useCallback(async (matchupId, team) => {
     const prevPick = picks[matchupId]
@@ -304,7 +300,7 @@ export default function BracketPage() {
 
               return (
                 <div key={round} style={{ width: 164 }}>
-                  <div className="mb-2 text-center">
+                  <div className="mb-2 text-center" style={{ minHeight: '2.5rem' }}>
                     <p className="text-[11px] font-semibold text-gray-400 font-body uppercase tracking-wider whitespace-nowrap">
                       {ROUND_LABELS[round]}
                     </p>
