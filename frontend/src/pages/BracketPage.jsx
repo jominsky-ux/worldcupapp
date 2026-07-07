@@ -119,11 +119,11 @@ export default function BracketPage() {
   }, [activeEntry?.id, teamLookup])
 
   // Derive matchup objects for every round from R32 + picks.
-  // Teams always come from picks so the user's predicted path stays visible even
-  // for wrong guesses. Scores are overlaid via `overrideResult` on each matchup,
-  // which swaps homeScore/awayScore when ESPN's home/away designation differs from
-  // the bracket slot order. If picks don't match the actual participants (the pick
-  // was wrong), overrideResult is null and no score is shown for that slot.
+  // For completed R16+ games, show the actual ESPN teams (with flags and scores)
+  // placed in bracket-position order (winner of prev[2j] → top slot, prev[2j+1]
+  // → bottom slot). If the actual team differs from the user's pick for that slot,
+  // the pick's abbreviation is shown in parentheses inside the card.
+  // For unplayed games, picks fill the slots as the predicted path.
   // IDs come from ROUND_MATCHUP_IDS; sequential pairing (prev[2j]+prev[2j+1] → current[j]).
   const derivedMatchups = useMemo(() => {
     const byRound = { R32: r32Matchups }
@@ -133,30 +133,51 @@ export default function BracketPage() {
       const ids = ROUND_MATCHUP_IDS[round]
       byRound[round] = Array.from({ length: prev.length / 2 }, (_, j) => {
         const id = ids[j]
-        const homePickTeam = picks[prev[2 * j].id] ?? null
-        const awayPickTeam = picks[prev[2 * j + 1].id] ?? null
-
-        // Compute the bracket-position-aware result for this slot.
-        // ESPN may label a different team as "home", so we match picks to ESPN
-        // competitors by team ID and swap scores accordingly.
-        let overrideResult
+        const prevHomeId = prev[2 * j].id
+        const prevAwayId = prev[2 * j + 1].id
         const gameResult = results[id]
         const liveMatchup = allMatchupsById.get(id)
-        if (gameResult && liveMatchup?.home?.id && liveMatchup?.away?.id && homePickTeam && awayPickTeam) {
-          const espnHomeId = String(liveMatchup.home.id)
-          const espnAwayId = String(liveMatchup.away.id)
-          const homePickId = String(homePickTeam.id)
-          const awayPickId = String(awayPickTeam.id)
-          if (homePickId === espnHomeId && awayPickId === espnAwayId) {
-            overrideResult = gameResult  // bracket order matches ESPN order
-          } else if (homePickId === espnAwayId && awayPickId === espnHomeId) {
-            overrideResult = { winnerId: gameResult.winnerId, homeScore: gameResult.awayScore, awayScore: gameResult.homeScore }
+
+        if (gameResult && liveMatchup?.home?.id && liveMatchup?.away?.id) {
+          // Game is complete. Place teams in bracket-position order:
+          // top slot = winner of the previous home-side game (prev[2j]).
+          const prevHomeWinnerId = results[prevHomeId]?.winnerId
+          const espnHomeIsBracketHome = prevHomeWinnerId
+            && String(liveMatchup.home.id) === String(prevHomeWinnerId)
+          const espnAwayIsBracketHome = prevHomeWinnerId
+            && String(liveMatchup.away.id) === String(prevHomeWinnerId)
+
+          let bracketHome, bracketAway, homeScore, awayScore
+          if (espnHomeIsBracketHome) {
+            bracketHome = liveMatchup.home; bracketAway = liveMatchup.away
+            homeScore = gameResult.homeScore; awayScore = gameResult.awayScore
+          } else if (espnAwayIsBracketHome) {
+            bracketHome = liveMatchup.away; bracketAway = liveMatchup.home
+            homeScore = gameResult.awayScore; awayScore = gameResult.homeScore
           } else {
-            overrideResult = null  // picks don't match actual participants, suppress score
+            // Can't resolve bracket order — fall back to ESPN's home/away.
+            bracketHome = liveMatchup.home; bracketAway = liveMatchup.away
+            homeScore = gameResult.homeScore; awayScore = gameResult.awayScore
+          }
+
+          const homePick = picks[prevHomeId]
+          const awayPick = picks[prevAwayId]
+          return {
+            id,
+            home: bracketHome,
+            away: bracketAway,
+            homePickNote: (homePick && String(homePick.id) !== String(bracketHome.id)) ? homePick.code : null,
+            awayPickNote: (awayPick && String(awayPick.id) !== String(bracketAway.id)) ? awayPick.code : null,
+            overrideResult: { winnerId: gameResult.winnerId, homeScore, awayScore },
           }
         }
 
-        return { id, home: homePickTeam, away: awayPickTeam, overrideResult }
+        // Game not yet played — show picks as the predicted bracket path.
+        return {
+          id,
+          home: picks[prevHomeId] ?? null,
+          away: picks[prevAwayId] ?? null,
+        }
       })
     }
     return byRound
@@ -378,6 +399,7 @@ function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
     >
       <TeamSlot
         team={matchup.home}
+        pickNote={matchup.homePickNote ?? null}
         isSelected={pick?.id === matchup.home?.id}
         actualWinnerId={actualWinnerId}
         score={matchResult != null ? matchResult.homeScore : null}
@@ -389,6 +411,7 @@ function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
       />
       <TeamSlot
         team={matchup.away}
+        pickNote={matchup.awayPickNote ?? null}
         isSelected={pick?.id === matchup.away?.id}
         actualWinnerId={actualWinnerId}
         score={matchResult != null ? matchResult.awayScore : null}
@@ -402,7 +425,7 @@ function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
 }
 
 // ── TeamSlot ───────────────────────────────────────────────────────────────
-function TeamSlot({ team, isSelected, actualWinnerId, score, roundPts, height, borderBottom, isReadOnly, onSelect }) {
+function TeamSlot({ team, pickNote, isSelected, actualWinnerId, score, roundPts, height, borderBottom, isReadOnly, onSelect }) {
   const base = `w-full flex items-center gap-1.5 px-2.5 text-left transition-colors${borderBottom ? ' border-b border-gray-100' : ''}`
 
   if (!team) {
@@ -439,6 +462,9 @@ function TeamSlot({ team, isSelected, actualWinnerId, score, roundPts, height, b
       />
       <div className="flex items-center gap-1 flex-1 min-w-0">
         <span className="font-body text-xs font-semibold truncate min-w-0">{team.code}</span>
+        {pickNote && (
+          <span className="font-body text-[10px] text-gray-400 shrink-0">({pickNote})</span>
+        )}
         {isCorrect && (
           <span className="shrink-0 text-[10px] font-bold leading-none bg-green-600 text-white px-1 py-0.5 rounded">
             +{roundPts}
