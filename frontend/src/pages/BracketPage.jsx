@@ -133,9 +133,9 @@ export default function BracketPage() {
       byRound[round] = Array.from({ length: prev.length / 2 }, (_, j) => {
         const id = ids[j]
         const liveMatchup = allMatchupsById.get(id)
-        const home = (isReadOnly && liveMatchup?.home) ? liveMatchup.home
+        const home = (isReadOnly && liveMatchup?.home?.id) ? liveMatchup.home
           : picks[prev[2 * j].id] ?? null
-        const away = (isReadOnly && liveMatchup?.away) ? liveMatchup.away
+        const away = (isReadOnly && liveMatchup?.away?.id) ? liveMatchup.away
           : picks[prev[2 * j + 1].id] ?? null
         return { id, home, away }
       })

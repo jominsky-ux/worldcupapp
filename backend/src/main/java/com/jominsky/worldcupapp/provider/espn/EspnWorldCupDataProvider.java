@@ -341,8 +341,8 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
                 JsonNode homeNode = findCompetitor(competitors, "home");
                 JsonNode awayNode = findCompetitor(competitors, "away");
 
-                TeamDto home = homeNode.isMissingNode() ? null : mapTeam(homeNode.path("team"));
-                TeamDto away = awayNode.isMissingNode() ? null : mapTeam(awayNode.path("team"));
+                TeamDto home = resolveTeam(homeNode);
+                TeamDto away = resolveTeam(awayNode);
 
                 boolean completed = competition.path("status").path("type").path("completed").asBoolean(false);
                 String homeScore = null;
@@ -491,6 +491,13 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
      * @param teamNode ESPN {@code team} sub-object
      * @return populated TeamDto; fields default to empty strings on missing data
      */
+    private TeamDto resolveTeam(JsonNode competitorNode) {
+        if (competitorNode.isMissingNode()) return null;
+        JsonNode teamNode = competitorNode.path("team");
+        if (teamNode.path("id").asText("").isEmpty()) return null;
+        return mapTeam(teamNode);
+    }
+
     private TeamDto mapTeam(JsonNode teamNode) {
         String logoUrl = "";
         // Standings endpoint: logos is an array of {href, width, height, ...}

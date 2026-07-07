@@ -202,8 +202,8 @@ export function useBracketMatchups() {
       apiClient.get('/api/tournament/bracket').then((res) =>
         res.data.map((m) => ({
           id: m.id,
-          home: m.homeTeam ? normalizeTeam(m.homeTeam) : null,
-          away: m.awayTeam ? normalizeTeam(m.awayTeam) : null,
+          home: m.homeTeam?.id ? normalizeTeam(m.homeTeam) : null,
+          away: m.awayTeam?.id ? normalizeTeam(m.awayTeam) : null,
           homeScore: m.homeScore ?? null,
           awayScore: m.awayScore ?? null,
           winnerId: m.winnerId ?? null,
