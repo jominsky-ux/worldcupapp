@@ -291,25 +291,34 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
     // Private mapping helpers
     // -------------------------------------------------------------------------
 
-    // R32 ESPN event IDs in bracket-position order (top-to-bottom visual layout).
-    // IDs are chronological by match date; this order is derived from the ESPN bracket draw.
-    // Must stay in sync with ROUND_MATCHUP_IDS.R32 in the frontend's bracket.js.
-    private static final List<String> R32_EVENT_IDS = List.of(
+    // All 31 knockout event IDs in bracket-position order (top-to-bottom visual layout
+    // within each round). Must stay in sync with ROUND_MATCHUP_IDS in the frontend's bracket.js.
+    private static final List<String> ALL_KNOCKOUT_EVENT_IDS = List.of(
+        // R32 (16 matches)
         "760489", "760492", "760486", "760488",  // GER/PAR, FRA/SWE, RSA/CAN, NED/MAR
         "760497", "760496", "760494", "760493",  // POR/CRO, ESP/AUT, USA/BIH, BEL/SEN
         "760487", "760490", "760491", "760495",  // BRA/JPN, CIV/NOR, MEX/ECU, ENG/COD
-        "760500", "760499", "760498", "760501"   // ARG/CPV, AUS/EGY, SUI/ALG, COL/GHA
+        "760500", "760499", "760498", "760501",  // ARG/CPV, AUS/EGY, SUI/ALG, COL/GHA
+        // R16 (8 matches)
+        "760503", "760502", "760506", "760507",  // GER/FRA half, RSA/NED half, POR/ESP half, USA/BEL half
+        "760504", "760505", "760508", "760509",  // BRA/CIV half, MEX/ENG half, ARG/AUS half, SUI/COL half
+        // QF (4 matches)
+        "760510", "760512", "760511", "760513",
+        // SF (2 matches)
+        "760514", "760515",
+        // Final (1 match — 760516 is 3rd place, excluded)
+        "760517"
     );
 
     /**
-     * Returns the 16 Round of 32 matchups with real competitor team data from
-     * ESPN's full-season events feed. Matchups are returned in the same bracket
-     * order as {@code R32_EVENT_IDS} (top-to-bottom visual order).
+     * Returns all 31 knockout matchups (R32 through Final) with real competitor
+     * team data and live results from ESPN's full-season events feed. Matchups are
+     * returned in the same bracket-position order as {@code ALL_KNOCKOUT_EVENT_IDS}.
      *
-     * Teams are null for any matchup ESPN has not yet announced (e.g., if a
-     * third-place group qualifier has not been determined).
+     * Teams are null for any matchup whose participants have not yet been determined
+     * (e.g., a QF slot before the R16 result is known).
      *
-     * @return list of R32 matchups; empty list if ESPN is unreachable
+     * @return list of all knockout matchups; empty list if ESPN is unreachable
      */
     @Override
     public List<BracketMatchupDto> getBracketMatchups() {
@@ -323,7 +332,7 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
             }
 
             List<BracketMatchupDto> matchups = new ArrayList<>();
-            for (String eventId : R32_EVENT_IDS) {
+            for (String eventId : ALL_KNOCKOUT_EVENT_IDS) {
                 JsonNode event = eventsById.get(eventId);
                 if (event == null) continue;
 

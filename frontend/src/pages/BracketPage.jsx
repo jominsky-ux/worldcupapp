@@ -93,13 +93,18 @@ export default function BracketPage() {
     return map
   }, [isReadOnly, liveMatchups])
 
+  // Index all live matchups by ID for O(1) lookup in derivedMatchups.
+  const allMatchupsById = useMemo(() => {
+    if (!liveMatchups?.length) return new Map()
+    return new Map(liveMatchups.map((m) => [String(m.id), m]))
+  }, [liveMatchups])
+
   // Reorder API results to match ROUND_MATCHUP_IDS.R32 bracket positions.
   // ESPN returns events in chronological order, not bracket-slot order.
   const r32Matchups = useMemo(() => {
     if (!liveMatchups?.length) return []
-    const byId = new Map(liveMatchups.map((m) => [String(m.id), m]))
-    return ROUND_MATCHUP_IDS.R32.map((id) => byId.get(id)).filter(Boolean)
-  }, [liveMatchups])
+    return ROUND_MATCHUP_IDS.R32.map((id) => allMatchupsById.get(id)).filter(Boolean)
+  }, [liveMatchups, allMatchupsById])
 
   const teamLookup = useMemo(() => buildTeamLookup(r32Matchups), [r32Matchups])
 
@@ -113,8 +118,11 @@ export default function BracketPage() {
     setError(null)
   }, [activeEntry?.id, teamLookup])
 
-  // Derive matchup objects for every round from R32 + current picks.
-  // R32 teams are fixed; later-round teams are the picked winners.
+  // Derive matchup objects for every round from R32 + picks/actual results.
+  // R32 teams are fixed from ESPN. For R16+:
+  //   - In KNOCKOUT mode (picks locked): use actual ESPN teams when known, fall
+  //     back to user's picks for future undetermined rounds.
+  //   - In pick-open mode: derive teams from user's picks (games haven't happened).
   // IDs come from ROUND_MATCHUP_IDS; sequential pairing (prev[2j]+prev[2j+1] → current[j]).
   const derivedMatchups = useMemo(() => {
     const byRound = { R32: r32Matchups }
@@ -122,14 +130,18 @@ export default function BracketPage() {
       const round = ROUND_ORDER[i]
       const prev = byRound[ROUND_ORDER[i - 1]]
       const ids = ROUND_MATCHUP_IDS[round]
-      byRound[round] = Array.from({ length: prev.length / 2 }, (_, j) => ({
-        id: ids[j],
-        home: picks[prev[2 * j].id] ?? null,
-        away: picks[prev[2 * j + 1].id] ?? null,
-      }))
+      byRound[round] = Array.from({ length: prev.length / 2 }, (_, j) => {
+        const id = ids[j]
+        const liveMatchup = allMatchupsById.get(id)
+        const home = (isReadOnly && liveMatchup?.home) ? liveMatchup.home
+          : picks[prev[2 * j].id] ?? null
+        const away = (isReadOnly && liveMatchup?.away) ? liveMatchup.away
+          : picks[prev[2 * j + 1].id] ?? null
+        return { id, home, away }
+      })
     }
     return byRound
-  }, [picks, r32Matchups])
+  }, [picks, r32Matchups, isReadOnly, allMatchupsById])
 
   const handlePick = useCallback(async (matchupId, team) => {
     const prevPick = picks[matchupId]

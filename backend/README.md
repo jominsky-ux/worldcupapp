@@ -144,6 +144,7 @@ All endpoints are prefixed with `/api`.
 | `GET` | `/api/matches` | Scoreboard (scheduled, live, completed) |
 | `GET` | `/api/matches/{eventId}/summary` | Goal and assist detail for a specific match |
 | `GET` | `/api/tournament/status` | Current phase, live-match flag, next match date |
+| `GET` | `/api/tournament/bracket` | All 31 knockout matchups (R32–Final) with live teams, scores, and winner IDs from ESPN |
 | `GET` | `/api/teams/athletes` | All athletes for every tournament team |
 | `GET` | `/api/players/points` | Total fantasy points per athlete (aggregated from `player_match_stats`) |
 | `GET` | `/api/players/{athleteId}/matches` | Per-game fantasy stats for one athlete, most recent first, with opponent name/abbreviation resolved |

@@ -191,9 +191,8 @@ export function useTournamentInfo() {
 // ══════════════════════════════════════════════════════════════════════════
 
 /**
- * useBracketMatchups — fetches the 16 R32 matchups with real team data from ESPN.
- * Source: GET /api/tournament/bracket
- * Replaces the hardcoded MOCK_R32_MATCHUPS in bracket.js.
+ * useBracketMatchups — fetches all 31 knockout matchups (R32 through Final) with real
+ * team data and live results from ESPN. Source: GET /api/tournament/bracket
  * Teams are normalised to the same shape ({code, flagUrl, ...}) that BracketPage expects.
  */
 export function useBracketMatchups() {
