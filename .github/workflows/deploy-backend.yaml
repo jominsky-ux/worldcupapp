@@ -1,42 +1,18 @@
-name: Deploy
+name: Deploy Backend
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'backend/**'
+      - '!backend/**/README.md'
 
 env:
   AWS_REGION: us-east-2
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-2.amazonaws.com
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      - uses: dorny/paths-filter@v4
-        id: filter
-        with:
-          filters: |
-            backend:
-              - 'backend/**'
-              - '!backend/**/README.md'
-            frontend:
-              - 'frontend/src/**'
-              - 'frontend/index.html'
-              - 'frontend/package*.json'
-              - 'frontend/vite.config.js'
-              - 'frontend/postcss.config.js'
-              - 'frontend/tailwind.config.js'
-              - '!frontend/**/README.md'
-
   deploy-backend:
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -92,33 +68,3 @@ jobs:
               -e MAIL_SMTP_STARTTLS=true \
               -e MAIL_FROM=${{ secrets.MAIL_FROM_ADDRESS }} \
               $ECR_REGISTRY/wcfantasy-backend:latest
-
-  deploy-frontend:
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with: { node-version: '24' }
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Build & deploy to S3
-        working-directory: frontend
-        env:
-          VITE_API_BASE_URL: ${{ secrets.API_URL }}
-        run: |
-          npm ci && npm run build
-          aws s3 sync dist/ s3://${{ secrets.S3_BUCKET }} --delete
-
-      - name: Invalidate CloudFront
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CF_DISTRIBUTION_ID }} \
-            --paths "/*"
