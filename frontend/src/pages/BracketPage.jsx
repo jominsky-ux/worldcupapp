@@ -119,9 +119,11 @@ export default function BracketPage() {
   }, [activeEntry?.id, teamLookup])
 
   // Derive matchup objects for every round from R32 + picks.
-  // R32 teams are fixed (from ESPN). For R16 onward: if the actual game has
-  // been completed (has a result), use real ESPN teams so the score matches the
-  // teams on screen. For games not yet played, show the user's predicted path.
+  // Teams always come from picks so the user's predicted path stays visible even
+  // for wrong guesses. Scores are overlaid via `overrideResult` on each matchup,
+  // which swaps homeScore/awayScore when ESPN's home/away designation differs from
+  // the bracket slot order. If picks don't match the actual participants (the pick
+  // was wrong), overrideResult is null and no score is shown for that slot.
   // IDs come from ROUND_MATCHUP_IDS; sequential pairing (prev[2j]+prev[2j+1] → current[j]).
   const derivedMatchups = useMemo(() => {
     const byRound = { R32: r32Matchups }
@@ -131,13 +133,30 @@ export default function BracketPage() {
       const ids = ROUND_MATCHUP_IDS[round]
       byRound[round] = Array.from({ length: prev.length / 2 }, (_, j) => {
         const id = ids[j]
+        const homePickTeam = picks[prev[2 * j].id] ?? null
+        const awayPickTeam = picks[prev[2 * j + 1].id] ?? null
+
+        // Compute the bracket-position-aware result for this slot.
+        // ESPN may label a different team as "home", so we match picks to ESPN
+        // competitors by team ID and swap scores accordingly.
+        let overrideResult
+        const gameResult = results[id]
         const liveMatchup = allMatchupsById.get(id)
-        const gameIsComplete = !!results[id]
-        return {
-          id,
-          home: (gameIsComplete && liveMatchup?.home) ? liveMatchup.home : (picks[prev[2 * j].id] ?? null),
-          away: (gameIsComplete && liveMatchup?.away) ? liveMatchup.away : (picks[prev[2 * j + 1].id] ?? null),
+        if (gameResult && liveMatchup?.home?.id && liveMatchup?.away?.id && homePickTeam && awayPickTeam) {
+          const espnHomeId = String(liveMatchup.home.id)
+          const espnAwayId = String(liveMatchup.away.id)
+          const homePickId = String(homePickTeam.id)
+          const awayPickId = String(awayPickTeam.id)
+          if (homePickId === espnHomeId && awayPickId === espnAwayId) {
+            overrideResult = gameResult  // bracket order matches ESPN order
+          } else if (homePickId === espnAwayId && awayPickId === espnHomeId) {
+            overrideResult = { winnerId: gameResult.winnerId, homeScore: gameResult.awayScore, awayScore: gameResult.homeScore }
+          } else {
+            overrideResult = null  // picks don't match actual participants, suppress score
+          }
         }
+
+        return { id, home: homePickTeam, away: awayPickTeam, overrideResult }
       })
     }
     return byRound
@@ -344,7 +363,10 @@ export default function BracketPage() {
 // ── MatchupCard ────────────────────────────────────────────────────────────
 function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
   const slotH = CARD_H / 2
-  const matchResult = results[matchup.id]
+  // R16+ matchups carry an overrideResult that has scores swapped to match bracket
+  // slot order (which may differ from ESPN's home/away). R32 matchups (from r32Matchups)
+  // don't have this field, so fall back to the global results map.
+  const matchResult = 'overrideResult' in matchup ? matchup.overrideResult : results[matchup.id]
   const actualWinnerId = matchResult?.winnerId
   const round = MATCHUP_ROUND_KEY[matchup.id]
   const roundPts = BRACKET_POINTS_PER_ROUND[round] ?? 0

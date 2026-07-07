@@ -25,7 +25,7 @@ export const ROUND_MATCHUP_IDS = {
     '760489', '760492', '760486', '760488',  // GER/PAR, FRA/SWE, RSA/CAN, NED/MAR → QF 7/9
     '760497', '760496', '760494', '760493',  // POR/CRO, ESP/AUT, USA/BIH, BEL/SEN → QF 7/11 (5pm)
     '760487', '760490', '760491', '760495',  // BRA/JPN, CIV/NOR, MEX/ECU, ENG/COD → QF 7/10
-    '760500', '760499', '760498', '760501',  // ARG/CPV, AUS/EGY, SUI/ALG, COL/GHA → QF 7/11 (9pm)
+    '760499', '760500', '760498', '760501',  // ARG/EGY, AUS/?, SUI/COL, ?/? → QF 7/11 (9pm)
   ],
   R16: [
     '760503', '760502', '760506', '760507',  // GER/FRA winner, RSA/NED winner, POR/ESP winner, USA/BEL winner
