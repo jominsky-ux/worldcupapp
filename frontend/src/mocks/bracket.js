@@ -29,7 +29,7 @@ export const ROUND_MATCHUP_IDS = {
   ],
   R16: [
     '760503', '760502', '760506', '760507',  // GER/FRA winner, RSA/NED winner, POR/ESP winner, USA/BEL winner
-    '760504', '760505', '760508', '760509',  // BRA/CIV winner, MEX/ENG winner, ARG/AUS winner, SUI/COL winner
+    '760504', '760505', '760509', '760508',  // BRA/CIV winner, MEX/ENG winner, EGY/ARG winner, SUI/COL winner
   ],
   QF:    ['760510', '760512', '760511', '760513'],  // QF 7/9 (GER half), QF 7/11 5pm (ESP half), QF 7/10 (BRA half), QF 7/11 9pm (ARG half)
   SF:    ['760514', '760515'],                      // matches 101-102
