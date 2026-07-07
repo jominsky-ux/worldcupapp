@@ -119,10 +119,9 @@ export default function BracketPage() {
   }, [activeEntry?.id, teamLookup])
 
   // Derive matchup objects for every round from R32 + picks.
-  // R32 teams are fixed (from ESPN). For R16 onward, the teams shown are always
-  // the user's picks — whoever they predicted would advance to that slot. Actual
-  // results are overlaid separately via the `results` map, so the bracket reads
-  // as "my predicted path + how each game actually turned out."
+  // R32 teams are fixed (from ESPN). For R16 onward: if the actual game has
+  // been completed (has a result), use real ESPN teams so the score matches the
+  // teams on screen. For games not yet played, show the user's predicted path.
   // IDs come from ROUND_MATCHUP_IDS; sequential pairing (prev[2j]+prev[2j+1] → current[j]).
   const derivedMatchups = useMemo(() => {
     const byRound = { R32: r32Matchups }
@@ -130,14 +129,19 @@ export default function BracketPage() {
       const round = ROUND_ORDER[i]
       const prev = byRound[ROUND_ORDER[i - 1]]
       const ids = ROUND_MATCHUP_IDS[round]
-      byRound[round] = Array.from({ length: prev.length / 2 }, (_, j) => ({
-        id: ids[j],
-        home: picks[prev[2 * j].id] ?? null,
-        away: picks[prev[2 * j + 1].id] ?? null,
-      }))
+      byRound[round] = Array.from({ length: prev.length / 2 }, (_, j) => {
+        const id = ids[j]
+        const liveMatchup = allMatchupsById.get(id)
+        const gameIsComplete = !!results[id]
+        return {
+          id,
+          home: (gameIsComplete && liveMatchup?.home) ? liveMatchup.home : (picks[prev[2 * j].id] ?? null),
+          away: (gameIsComplete && liveMatchup?.away) ? liveMatchup.away : (picks[prev[2 * j + 1].id] ?? null),
+        }
+      })
     }
     return byRound
-  }, [picks, r32Matchups])
+  }, [picks, r32Matchups, allMatchupsById, results])
 
   const handlePick = useCallback(async (matchupId, team) => {
     const prevPick = picks[matchupId]
