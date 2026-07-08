@@ -207,6 +207,8 @@ export function useBracketMatchups() {
           homeScore: m.homeScore ?? null,
           awayScore: m.awayScore ?? null,
           winnerId: m.winnerId ?? null,
+          homePenaltyScore: m.homePenaltyScore ?? null,
+          awayPenaltyScore: m.awayPenaltyScore ?? null,
         }))
       ),
     staleTime: 1000 * 60 * 5,

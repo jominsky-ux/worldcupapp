@@ -344,10 +344,14 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
                 TeamDto home = resolveTeam(homeNode);
                 TeamDto away = resolveTeam(awayNode);
 
-                boolean completed = competition.path("status").path("type").path("completed").asBoolean(false);
+                JsonNode statusType = competition.path("status").path("type");
+                boolean completed = statusType.path("completed").asBoolean(false);
+                boolean wasPenalty = "STATUS_FINAL_PEN".equals(statusType.path("name").asText());
                 String homeScore = null;
                 String awayScore = null;
                 String winnerId = null;
+                Integer homePenaltyScore = null;
+                Integer awayPenaltyScore = null;
                 if (completed && !homeNode.isMissingNode() && !awayNode.isMissingNode()) {
                     homeScore = homeNode.path("score").asText(null);
                     awayScore = awayNode.path("score").asText(null);
@@ -356,9 +360,13 @@ public class EspnWorldCupDataProvider implements WorldCupDataProvider {
                     } else if (awayNode.path("winner").asBoolean(false)) {
                         winnerId = awayNode.path("team").path("id").asText(null);
                     }
+                    if (wasPenalty && !homeNode.path("shootoutScore").isMissingNode()) {
+                        homePenaltyScore = homeNode.path("shootoutScore").asInt();
+                        awayPenaltyScore = awayNode.path("shootoutScore").asInt();
+                    }
                 }
 
-                matchups.add(new BracketMatchupDto(eventId, home, away, homeScore, awayScore, winnerId));
+                matchups.add(new BracketMatchupDto(eventId, home, away, homeScore, awayScore, winnerId, homePenaltyScore, awayPenaltyScore));
             }
             return matchups;
 

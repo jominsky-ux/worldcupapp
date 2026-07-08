@@ -87,7 +87,7 @@ export default function BracketPage() {
     const map = {}
     for (const m of liveMatchups) {
       if (m.winnerId) {
-        map[m.id] = { winnerId: m.winnerId, homeScore: m.homeScore, awayScore: m.awayScore }
+        map[m.id] = { winnerId: m.winnerId, homeScore: m.homeScore, awayScore: m.awayScore, homePenaltyScore: m.homePenaltyScore, awayPenaltyScore: m.awayPenaltyScore }
       }
     }
     return map
@@ -147,17 +147,20 @@ export default function BracketPage() {
           const espnAwayIsBracketHome = prevHomeWinnerId
             && String(liveMatchup.away.id) === String(prevHomeWinnerId)
 
-          let bracketHome, bracketAway, homeScore, awayScore
+          let bracketHome, bracketAway, homeScore, awayScore, homePenaltyScore, awayPenaltyScore
           if (espnHomeIsBracketHome) {
             bracketHome = liveMatchup.home; bracketAway = liveMatchup.away
             homeScore = gameResult.homeScore; awayScore = gameResult.awayScore
+            homePenaltyScore = gameResult.homePenaltyScore; awayPenaltyScore = gameResult.awayPenaltyScore
           } else if (espnAwayIsBracketHome) {
             bracketHome = liveMatchup.away; bracketAway = liveMatchup.home
             homeScore = gameResult.awayScore; awayScore = gameResult.homeScore
+            homePenaltyScore = gameResult.awayPenaltyScore; awayPenaltyScore = gameResult.homePenaltyScore
           } else {
             // Can't resolve bracket order — fall back to ESPN's home/away.
             bracketHome = liveMatchup.home; bracketAway = liveMatchup.away
             homeScore = gameResult.homeScore; awayScore = gameResult.awayScore
+            homePenaltyScore = gameResult.homePenaltyScore; awayPenaltyScore = gameResult.awayPenaltyScore
           }
 
           const homePick = picks[prevHomeId]
@@ -168,7 +171,7 @@ export default function BracketPage() {
             away: bracketAway,
             homePickNote: (homePick && String(homePick.id) !== String(bracketHome.id)) ? homePick.code : null,
             awayPickNote: (awayPick && String(awayPick.id) !== String(bracketAway.id)) ? awayPick.code : null,
-            overrideResult: { winnerId: gameResult.winnerId, homeScore, awayScore },
+            overrideResult: { winnerId: gameResult.winnerId, homeScore, awayScore, homePenaltyScore, awayPenaltyScore },
           }
         }
 
@@ -403,6 +406,7 @@ function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
         isSelected={pick?.id === matchup.home?.id}
         actualWinnerId={actualWinnerId}
         score={matchResult != null ? matchResult.homeScore : null}
+        penaltyScore={matchResult != null ? matchResult.homePenaltyScore ?? null : null}
         roundPts={roundPts}
         height={slotH}
         borderBottom
@@ -415,6 +419,7 @@ function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
         isSelected={pick?.id === matchup.away?.id}
         actualWinnerId={actualWinnerId}
         score={matchResult != null ? matchResult.awayScore : null}
+        penaltyScore={matchResult != null ? matchResult.awayPenaltyScore ?? null : null}
         roundPts={roundPts}
         height={slotH}
         isReadOnly={isReadOnly}
@@ -425,7 +430,7 @@ function MatchupCard({ matchup, pick, onPick, results, isReadOnly }) {
 }
 
 // ── TeamSlot ───────────────────────────────────────────────────────────────
-function TeamSlot({ team, pickNote, isSelected, actualWinnerId, score, roundPts, height, borderBottom, isReadOnly, onSelect }) {
+function TeamSlot({ team, pickNote, isSelected, actualWinnerId, score, penaltyScore, roundPts, height, borderBottom, isReadOnly, onSelect }) {
   const base = `w-full flex items-center gap-1.5 px-2.5 text-left transition-colors${borderBottom ? ' border-b border-gray-100' : ''}`
 
   if (!team) {
@@ -472,7 +477,12 @@ function TeamSlot({ team, pickNote, isSelected, actualWinnerId, score, roundPts,
         )}
       </div>
       {score !== null && (
-        <span className="tabular-nums text-xs font-bold shrink-0">{score}</span>
+        <span className="tabular-nums text-xs font-bold shrink-0">
+          {score}
+          {penaltyScore != null && (
+            <span className="font-normal text-[10px] ml-0.5">({penaltyScore})</span>
+          )}
+        </span>
       )}
     </button>
   )
