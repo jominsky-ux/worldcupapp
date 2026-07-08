@@ -11,12 +11,16 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import com.jominsky.worldcupapp.dto.AthleteDto;
+import com.jominsky.worldcupapp.dto.BracketPickDto;
 import com.jominsky.worldcupapp.dto.EntryDetailDto;
 import com.jominsky.worldcupapp.dto.EntryScoreDto;
 import com.jominsky.worldcupapp.dto.GroupDto;
+import com.jominsky.worldcupapp.dto.GroupPickDetailDto;
 import com.jominsky.worldcupapp.dto.LeaderboardEntryDto;
 import com.jominsky.worldcupapp.dto.SquadPlayerScoreDto;
 import com.jominsky.worldcupapp.dto.StandingsGroupDto;
+import com.jominsky.worldcupapp.dto.TeamDto;
+import com.jominsky.worldcupapp.dto.ThirdPlacePickDetailDto;
 import com.jominsky.worldcupapp.dto.TournamentStatusDto;
 import com.jominsky.worldcupapp.model.Entry;
 import com.jominsky.worldcupapp.model.GroupStagePick;
@@ -193,9 +197,65 @@ public class ScoringService {
                 .sorted(Comparator.comparingInt(s -> POSITION_ORDER.getOrDefault(s.position(), 99)))
                 .toList();
 
+        // Build team-code and group-name lookups from ESPN group data (cached).
+        List<GroupDto> groups = dataProvider.getGroups();
+        Map<String, String> teamCodeById = new HashMap<>();
+        Map<String, String> groupNameById = new HashMap<>();
+        for (GroupDto g : groups) {
+            groupNameById.put(g.id(), g.name());
+            for (TeamDto t : g.teams()) {
+                teamCodeById.put(t.id(), t.abbreviation());
+            }
+        }
+
+        // Per-group pick details
+        List<GroupPickDetailDto> groupPickDetails = new ArrayList<>();
+        for (GroupStagePick pick : groupStagePickRepository.findByEntry(entry)) {
+            GroupPositions actual = groupPositions.get(pick.getGroupId());
+            boolean firstCorrect = actual != null
+                    && pick.getFirstPlaceTeamId() != null
+                    && pick.getFirstPlaceTeamId().equals(actual.first());
+            boolean secondCorrect = actual != null
+                    && pick.getSecondPlaceTeamId() != null
+                    && pick.getSecondPlaceTeamId().equals(actual.second());
+            int pts = (firstCorrect ? POINTS_CORRECT_FIRST : 0) + (secondCorrect ? POINTS_CORRECT_SECOND : 0);
+            groupPickDetails.add(new GroupPickDetailDto(
+                    pick.getGroupId(),
+                    groupNameById.getOrDefault(pick.getGroupId(), pick.getGroupId()),
+                    teamCodeById.getOrDefault(pick.getFirstPlaceTeamId(), "?"),
+                    teamCodeById.getOrDefault(pick.getSecondPlaceTeamId(), "?"),
+                    actual != null ? teamCodeById.getOrDefault(actual.first(), "?") : null,
+                    actual != null ? teamCodeById.getOrDefault(actual.second(), "?") : null,
+                    firstCorrect,
+                    secondCorrect,
+                    pts));
+        }
+        groupPickDetails.sort(Comparator.comparing(GroupPickDetailDto::groupName));
+
+        // Per-team 3rd-place pick details
+        List<ThirdPlacePickDetailDto> thirdPlacePickDetails = new ArrayList<>();
+        for (ThirdPlacePick pick : thirdPlacePickRepository.findByEntry(entry)) {
+            GroupPositions actual = groupPositions.get(pick.getGroupId());
+            boolean correct = actual != null
+                    && pick.getTeamId() != null
+                    && pick.getTeamId().equals(actual.third());
+            thirdPlacePickDetails.add(new ThirdPlacePickDetailDto(
+                    teamCodeById.getOrDefault(pick.getTeamId(), "?"),
+                    groupNameById.getOrDefault(pick.getGroupId(), pick.getGroupId()),
+                    correct,
+                    correct ? POINTS_THIRD_PLACE : 0));
+        }
+        thirdPlacePickDetails.sort(Comparator.comparing(ThirdPlacePickDetailDto::groupName));
+
+        // Bracket picks list (same shape as frontend's bracketPicks array)
+        List<BracketPickDto> bracketPicks = knockoutPickRepository.findByEntry(entry).stream()
+                .map(p -> new BracketPickDto(p.getMatchEventId(), p.getWinnerTeamId()))
+                .toList();
+
         return new EntryDetailDto(entry.getId(), entry.getEntryNumber(), entry.getName(),
                 score.groupPoints(), score.thirdPlacePoints(), score.bracketPoints(),
-                score.squadPoints(), score.totalPoints(), squad);
+                score.squadPoints(), score.totalPoints(), squad,
+                groupPickDetails, thirdPlacePickDetails, bracketPicks);
     }
 
     /**

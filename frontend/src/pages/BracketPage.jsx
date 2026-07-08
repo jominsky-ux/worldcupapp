@@ -21,11 +21,12 @@
  */
 
 import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useEntry } from '../context/EntryContext'
 import { PhaseGate } from '../components/shared/SharedComponents'
 import { ROUND_ORDER, ROUND_LABELS, ROUND_MATCHUP_IDS, MATCHUP_ROUND_KEY } from '../mocks/bracket'
 import { BRACKET_POINTS_PER_ROUND } from '../mocks/entries'
-import { useBracketMatchups } from '../hooks/useGameData'
+import { useBracketMatchups, useEntryDetail } from '../hooks/useGameData'
 
 // ── Layout constants ───────────────────────────────────────────────────────
 // Each R32 matchup card occupies CARD_H px. SLOT is the repeating unit
@@ -76,7 +77,10 @@ function cascadeClear(picks, matchupId, clearedTeam) {
 
 export default function BracketPage() {
   const { entries, activeEntry, activeEntryId, setActiveEntryId, saveBracketPick, phase } = useEntry()
-  const isReadOnly = phase === 'KNOCKOUT'
+  const [searchParams] = useSearchParams()
+  const viewEntryId = searchParams.get('viewEntry')
+  const { data: viewedEntry } = useEntryDetail(viewEntryId)
+  const isReadOnly = phase === 'KNOCKOUT' || !!viewEntryId
 
   const { data: liveMatchups, isLoading: matchupsLoading } = useBracketMatchups()
 
@@ -114,9 +118,17 @@ export default function BracketPage() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    setPicks(buildPicksMap(activeEntry?.bracketPicks, teamLookup))
-    setError(null)
-  }, [activeEntry?.id, teamLookup])
+    if (!viewEntryId) {
+      setPicks(buildPicksMap(activeEntry?.bracketPicks, teamLookup))
+      setError(null)
+    }
+  }, [activeEntry?.id, teamLookup, viewEntryId])
+
+  useEffect(() => {
+    if (viewEntryId && viewedEntry) {
+      setPicks(buildPicksMap(viewedEntry.bracketPicks, teamLookup))
+    }
+  }, [viewEntryId, viewedEntry, teamLookup])
 
   // Derive matchup objects for every round from R32 + picks.
   // For completed R16+ games, show the actual ESPN teams (with flags and scores)
@@ -243,7 +255,7 @@ export default function BracketPage() {
     [pointsByRound]
   )
 
-  if (!activeEntry) return (
+  if (!viewEntryId && !activeEntry) return (
     <div className="card text-center py-12 space-y-2">
       <p className="font-body font-semibold text-brand text-lg">No entry selected</p>
       <p className="font-body text-gray-500 text-sm">
@@ -276,18 +288,27 @@ export default function BracketPage() {
         {/* ── Header ── */}
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div className="space-y-2">
+            {viewEntryId && (
+              <Link to="/leaderboard" className="text-sm text-gray-400 font-body hover:text-brand block">
+                ← Back to Leaderboard
+              </Link>
+            )}
             <h1 className="font-body font-semibold text-3xl text-brand">
-              Knockout Bracket
+              {viewEntryId ? (viewedEntry?.name ?? 'Bracket') : 'Knockout Bracket'}
             </h1>
             <p className="text-gray-500 font-body">
-              Pick the winner of each round · {totalPicks} / 31 picks made
+              {viewEntryId
+                ? 'Read-only bracket view'
+                : `Pick the winner of each round · ${totalPicks} / 31 picks made`}
             </p>
-            <EntryIndicator
-              entries={entries}
-              activeEntry={activeEntry}
-              activeEntryId={activeEntryId}
-              onSwitch={setActiveEntryId}
-            />
+            {!viewEntryId && (
+              <EntryIndicator
+                entries={entries}
+                activeEntry={activeEntry}
+                activeEntryId={activeEntryId}
+                onSwitch={setActiveEntryId}
+              />
+            )}
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0 self-start mt-1">
             {totalPicks > 0 && (
@@ -300,7 +321,7 @@ export default function BracketPage() {
             )}
             {isReadOnly ? (
               <span className="badge bg-gray-100 text-gray-500 font-body text-xs">
-                Bracket locked — read only
+                {viewEntryId ? 'Viewing entry' : 'Bracket locked — read only'}
               </span>
             ) : (
               <button

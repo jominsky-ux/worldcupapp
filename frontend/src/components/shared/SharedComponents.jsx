@@ -287,12 +287,16 @@ export function PlayerMatchStatsModal({ player, onClose }) {
  *   onClose — function called when the user dismisses the modal
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useEntryDetail } from '../../hooks/useGameData'
 
 export function EntryDetailModal({ entryId, onClose }) {
   const { data: detail, isLoading } = useEntryDetail(entryId)
   const [selectedPlayer, setSelectedPlayer] = useState(null)
+  const [view, setView] = useState(null) // null | 'group' | 'third'
+
+  useEffect(() => { setView(null) }, [entryId])
 
   if (!entryId) return null
 
@@ -308,10 +312,20 @@ export function EntryDetailModal({ entryId, onClose }) {
 
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
+            {view && (
+              <button
+                onClick={() => setView(null)}
+                className="text-xs text-gray-400 hover:text-brand font-body mb-1 flex items-center gap-1"
+              >
+                ← Back
+              </button>
+            )}
             <h2 className="font-body font-semibold text-xl text-brand">
               {detail?.name ?? 'Entry'}
             </h2>
-            <p className="text-sm text-gray-400 font-body">Points breakdown</p>
+            <p className="text-sm text-gray-400 font-body">
+              {view === 'group' ? 'Group stage picks' : view === 'third' ? '3rd place picks' : 'Points breakdown'}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -326,21 +340,37 @@ export function EntryDetailModal({ entryId, onClose }) {
           <LoadingSpinner label="Loading entry…" />
         ) : !detail ? (
           <p className="text-gray-400 font-body text-center py-8">Entry not found.</p>
+        ) : view === 'group' ? (
+          <GroupPicksView detail={detail} />
+        ) : view === 'third' ? (
+          <ThirdPlacePicksView detail={detail} />
         ) : (
           <>
             <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="rounded-xl bg-surface-secondary p-4 text-center">
+              <button
+                onClick={() => setView('group')}
+                className="rounded-xl bg-surface-secondary p-4 text-center hover:bg-gray-100 transition-colors cursor-pointer"
+              >
                 <p className="text-2xl font-semibold tabular-nums text-brand">{detail.groupPoints}</p>
                 <p className="text-xs text-gray-400 font-body mt-1">Group Stage</p>
-              </div>
-              <div className="rounded-xl bg-surface-secondary p-4 text-center">
+                <p className="text-[10px] text-brand/60 font-body mt-0.5">View picks →</p>
+              </button>
+              <button
+                onClick={() => setView('third')}
+                className="rounded-xl bg-surface-secondary p-4 text-center hover:bg-gray-100 transition-colors cursor-pointer"
+              >
                 <p className="text-2xl font-semibold tabular-nums text-brand">{detail.thirdPlacePoints}</p>
                 <p className="text-xs text-gray-400 font-body mt-1">3rd Place</p>
-              </div>
-              <div className="rounded-xl bg-surface-secondary p-4 text-center">
+                <p className="text-[10px] text-brand/60 font-body mt-0.5">View picks →</p>
+              </button>
+              <Link
+                to={`/bracket?viewEntry=${entryId}`}
+                className="rounded-xl bg-surface-secondary p-4 text-center hover:bg-gray-100 transition-colors block"
+              >
                 <p className="text-2xl font-semibold tabular-nums text-brand">{detail.bracketPoints}</p>
                 <p className="text-xs text-gray-400 font-body mt-1">Bracket</p>
-              </div>
+                <p className="text-[10px] text-brand/60 font-body mt-0.5">View bracket →</p>
+              </Link>
             </div>
 
             <h3 className="font-body font-semibold text-sm text-brand mb-2">
@@ -391,6 +421,117 @@ export function EntryDetailModal({ entryId, onClose }) {
             onClose={() => setSelectedPlayer(null)}
           />
         </div>
+      )}
+    </div>
+  )
+}
+
+function GroupPicksView({ detail }) {
+  const picks = detail.groupPickDetails ?? []
+  const subTotal = picks.reduce((s, g) => s + g.points, 0)
+  const bonus = detail.groupPoints - subTotal
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs text-gray-400 font-body uppercase tracking-wide">
+          {picks.length} groups
+        </span>
+        <span className="text-sm font-semibold text-brand font-body">
+          {detail.groupPoints} pts total
+          {bonus > 0 && <span className="text-green-600 ml-1">(+{bonus} all-correct bonus)</span>}
+        </span>
+      </div>
+      <table className="w-full text-sm font-body">
+        <thead>
+          <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
+            <th className="py-2 pr-2">Group</th>
+            <th className="py-2 pr-2">1st Pick</th>
+            <th className="py-2 pr-2">2nd Pick</th>
+            <th className="py-2 text-right">Pts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {picks.map((g) => (
+            <tr key={g.groupId} className="border-b border-gray-50 last:border-0">
+              <td className="py-2 pr-2 text-gray-500 whitespace-nowrap">{g.groupName}</td>
+              <td className="py-2 pr-2 whitespace-nowrap">
+                <span className={g.firstCorrect ? 'text-green-700 font-semibold' : 'text-gray-700'}>
+                  {g.firstPickCode}
+                </span>
+                {g.firstCorrect
+                  ? <span className="text-green-600 ml-1 text-xs">✓</span>
+                  : g.actualFirstCode
+                    ? <span className="text-gray-400 ml-1 text-xs">✗ →{g.actualFirstCode}</span>
+                    : <span className="text-gray-300 ml-1 text-xs">—</span>
+                }
+              </td>
+              <td className="py-2 pr-2 whitespace-nowrap">
+                <span className={g.secondCorrect ? 'text-green-700 font-semibold' : 'text-gray-700'}>
+                  {g.secondPickCode}
+                </span>
+                {g.secondCorrect
+                  ? <span className="text-green-600 ml-1 text-xs">✓</span>
+                  : g.actualSecondCode
+                    ? <span className="text-gray-400 ml-1 text-xs">✗ →{g.actualSecondCode}</span>
+                    : <span className="text-gray-300 ml-1 text-xs">—</span>
+                }
+              </td>
+              <td className="py-2 text-right tabular-nums font-semibold text-brand">{g.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {picks.length === 0 && (
+        <p className="text-gray-400 font-body text-center py-6">No group stage picks yet.</p>
+      )}
+    </div>
+  )
+}
+
+function ThirdPlacePicksView({ detail }) {
+  const picks = detail.thirdPlacePickDetails ?? []
+  const correct = picks.filter((p) => p.correct).length
+  const bonus = detail.thirdPlacePoints - picks.reduce((s, p) => s + p.points, 0)
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs text-gray-400 font-body uppercase tracking-wide">
+          {correct}/{picks.length} correct
+        </span>
+        <span className="text-sm font-semibold text-brand font-body">
+          {detail.thirdPlacePoints} pts total
+          {bonus > 0 && <span className="text-green-600 ml-1">(+{bonus} all-correct bonus)</span>}
+        </span>
+      </div>
+      <table className="w-full text-sm font-body">
+        <thead>
+          <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
+            <th className="py-2 pr-3">Team</th>
+            <th className="py-2 pr-3">Group</th>
+            <th className="py-2 text-right">Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          {picks.map((p, i) => (
+            <tr key={i} className="border-b border-gray-50 last:border-0">
+              <td className={`py-2 pr-3 font-semibold ${p.correct ? 'text-green-700' : 'text-gray-700'}`}>
+                {p.teamCode}
+              </td>
+              <td className="py-2 pr-3 text-gray-500">{p.groupName}</td>
+              <td className="py-2 text-right">
+                {p.correct
+                  ? <span className="text-green-600 font-semibold text-xs">✓ +1</span>
+                  : <span className="text-gray-300 text-xs">✗</span>
+                }
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {picks.length === 0 && (
+        <p className="text-gray-400 font-body text-center py-6">No 3rd place picks yet.</p>
       )}
     </div>
   )
